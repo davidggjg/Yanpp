@@ -32,16 +32,16 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Build debug APK
+      - name: Build signed release APK
         env:
           _JAVA_OPTIONS: "-Djava.awt.headless=true"
         run: |
           chmod +x ./gradlew
-          ./gradlew assembleDebug --stacktrace
+          ./gradlew assembleRelease --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: morphe-manager-debug-apk
-          path: morphe-manager/app/build/outputs/apk/debug/*.apk
+          name: morphe-manager-apk
+          path: morphe-manager/app/build/outputs/apk/release/*.apk
           if-no-files-found: error

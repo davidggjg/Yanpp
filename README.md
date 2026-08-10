@@ -36,14 +36,26 @@ downloading `app.morphe:*` artifacts from GitHub Packages.
 
 ```bash
 cd morphe-manager
-./gradlew assembleDebug
+./gradlew assembleRelease
 ```
 
-The APK is produced at `morphe-manager/app/build/outputs/apk/debug/`.
+The signed APK is produced at `morphe-manager/app/build/outputs/apk/release/`.
 
 A GitHub Actions workflow (`.github/workflows/build-apk.yml`) builds this
 automatically on every push/PR and uploads the APK as a build artifact.
 
-Building a signed release build additionally requires a keystore, which is
-not included in this repository — see `morphe-manager/app/build.gradle.kts`
-for the expected signing environment variables.
+### About the signing key
+
+`morphe-manager/app/keystore.jks` is a self-signed release key generated
+for this app, with its passwords in `morphe-manager/app/keystore.properties`
+right next to it, so the build is fully self-contained and doesn't need any
+secrets configured elsewhere. Android only requires that every update to an
+already-installed app be signed with the *same* key — this one is just as
+valid as any other for that purpose.
+
+The trade-off: because the key lives in this repository, anyone with read
+access to it can extract the key. That's fine as long as this repo stays
+private. If it's ever made public, treat the key as compromised — delete
+`app/keystore.jks` and `app/keystore.properties` and let the build fall
+back to debug signing (or generate a fresh keystore) before publishing
+further releases.

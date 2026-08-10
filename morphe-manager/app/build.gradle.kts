@@ -2,6 +2,7 @@ import com.mikepenz.aboutlibraries.plugin.DuplicateMode
 import com.mikepenz.aboutlibraries.plugin.DuplicateRule
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import kotlin.random.Random
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
@@ -163,15 +164,19 @@ android {
             }
 
             val keystoreFile = file("keystore.jks")
+            val keystorePropsFile = file("keystore.properties")
+            val keystoreProps = Properties().apply {
+                if (keystorePropsFile.exists()) keystorePropsFile.inputStream().use(::load)
+            }
 
             signingConfig = if (project.hasProperty("signAsDebug") || !keystoreFile.exists()) {
                 signingConfigs.getByName("debug")
             } else {
                 signingConfigs.create("release") {
                     storeFile = keystoreFile
-                    storePassword = System.getenv("KEYSTORE_PASSWORD")
-                    keyAlias = System.getenv("KEYSTORE_ENTRY_ALIAS")
-                    keyPassword = System.getenv("KEYSTORE_ENTRY_PASSWORD")
+                    storePassword = keystoreProps.getProperty("storePassword") ?: System.getenv("KEYSTORE_PASSWORD")
+                    keyAlias = keystoreProps.getProperty("keyAlias") ?: System.getenv("KEYSTORE_ENTRY_ALIAS")
+                    keyPassword = keystoreProps.getProperty("keyPassword") ?: System.getenv("KEYSTORE_ENTRY_PASSWORD")
                 }
             }
 
