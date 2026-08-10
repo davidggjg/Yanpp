@@ -1,0 +1,1045 @@
+package app.morphe.manager.ui.viewmodel
+
+import android.app.Application
+import android.content.Intent
+import android.content.pm.PackageInfo
+import android.net.Uri
+import android.os.Bundle
+import android.os.ParcelUuid
+import android.os.PowerManager
+import android.util.Log
+import androidx.activity.result.ActivityResult
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.autoSaver
+import androidx.compose.runtime.setValue
+import androidx.core.os.BundleCompat
+import androidx.lifecycle.*
+import androidx.lifecycle.viewmodel.compose.SavedStateHandleSaveableApi
+import androidx.lifecycle.viewmodel.compose.saveable
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
+import app.morphe.manager.BuildConfig
+import app.morphe.manager.R
+import app.morphe.manager.data.platform.Filesystem
+import app.morphe.manager.data.room.apps.installed.InstallType
+import app.morphe.manager.domain.manager.InstallerPreferenceTokens
+import app.morphe.manager.domain.manager.PatchOptionsPreferencesManager
+import app.morphe.manager.domain.manager.PreferencesManager
+import app.morphe.manager.domain.repository.*
+import app.morphe.manager.domain.repository.PatchBundleRepository.Companion.DEFAULT_SOURCE_UID
+import app.morphe.manager.domain.worker.WorkerRepository
+import app.morphe.manager.patcher.patch.PatchBundleInfo
+import app.morphe.manager.patcher.patch.PatchLockState
+import app.morphe.manager.patcher.patch.PatchSourceRef
+import app.morphe.manager.patcher.patch.SELECTION_APK_ARCHITECTURE
+import app.morphe.manager.patcher.runtime.ProcessRuntime
+import app.morphe.manager.patcher.split.SplitApkPreparer
+import app.morphe.manager.patcher.worker.PatcherWorker
+import app.morphe.manager.ui.model.*
+import app.morphe.manager.ui.model.navigation.Patcher
+import app.morphe.manager.ui.screen.patcher.PatcherErrorInfo
+import app.morphe.manager.util.*
+import app.morphe.manager.worker.UpdateCheckWorker
+import app.morphe.patcher.patch.InstallerType
+import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.get
+import org.koin.core.component.inject
+import java.io.File
+import java.io.IOException
+import java.util.UUID
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
+
+@OptIn(SavedStateHandleSaveableApi::class)
+class PatcherViewModel(
+    private val input: Patcher.ViewModelParams
+) : ViewModel(), KoinComponent, StepProgressProvider {
+    private val app: Application by inject()
+    private val fs: Filesystem by inject()
+    private val pm: PM by inject()
+    private val workerRepository: WorkerRepository by inject()
+    private val patchBundleRepository: PatchBundleRepository by inject()
+    private val patchSelectionRepository: PatchSelectionRepository by inject()
+    private val patchOptionsRepository: PatchOptionsRepository by inject()
+    private val installedAppRepository: InstalledAppRepository by inject()
+    private val prefs: PreferencesManager by inject()
+    private val patchOptionsPrefs: PatchOptionsPreferencesManager by inject()
+    private val originalApkRepository: OriginalApkRepository by inject()
+    private val savedStateHandle: SavedStateHandle = get()
+
+    private var savedPatchedApp by savedStateHandle.saveableVar { false }
+
+    private val saveOriginalApkMutex = Mutex()
+
+    var exportMetadata by mutableStateOf<PatchedAppExportData?>(null)
+        private set
+
+    /** Formatted export file name derived from [exportMetadata]. */
+    val exportFileName: String by derivedStateOf {
+        val data = exportMetadata ?: PatchedAppExportData(
+            appName = packageName,
+            packageName = packageName,
+            appVersion = version ?: "unspecified"
+        )
+        ExportNameFormatter.format(null, data)
+    }
+    private var appliedSelection: PatchSelection = input.selectedPatches.mapValues { it.value.toSet() }
+    private var appliedOptions: Options = input.options
+    val patchedFromInstalledDevice: Boolean
+        get() = (selectedApp as? SelectedApp.Local)?.fromInstalledDevice == true
+
+    private var currentActivityRequest: Pair<CompletableDeferred<Boolean>, String>? by mutableStateOf(
+        null
+    )
+    val activityPromptDialog by derivedStateOf { currentActivityRequest?.second }
+
+    private var launchedActivity: CompletableDeferred<ActivityResult>? = null
+    private val launchActivityChannel = Channel<Intent>()
+    val launchActivityFlow = launchActivityChannel.receiveAsFlow()
+
+    private val _autoInstallChannel = Channel<Unit>(Channel.CONFLATED)
+    val autoInstallEvent: Flow<Unit> = _autoInstallChannel.receiveAsFlow()
+
+    var patchingCompletedAt: Long? = null
+        private set
+
+    var patchingCompletedInForeground: Boolean = false
+        private set
+
+    var showSuccessScreen: Boolean by mutableStateOf(false)
+        private set
+
+    fun showSuccess() { showSuccessScreen = true }
+    fun hideSuccessScreen() { showSuccessScreen = false }
+
+    var isPatching: Boolean by mutableStateOf(true)
+        private set
+
+    private val selectedApp = input.selectedApp
+    val packageName = selectedApp.packageName
+    val version = selectedApp.version
+
+    data class MemoryAdjustmentDialogState(
+        val previousLimit: Int,
+        val newLimit: Int,
+        val adjusted: Boolean
+    )
+
+    var memoryAdjustmentDialog by mutableStateOf<MemoryAdjustmentDialogState?>(null)
+        private set
+
+    data class MissingPatchWarningState(
+        val patchNames: List<String>
+    )
+    var missingPatchWarning by mutableStateOf<MissingPatchWarningState?>(null)
+        private set
+
+    var batteryOptimizationDialog by mutableStateOf(false)
+        private set
+
+    /**
+     * Non-null when one or more patch option paths cannot be read before patching starts.
+     */
+    data class InaccessibleOptionPathsState(
+        val failures: List<PathValidationResult>
+    )
+    var inaccessibleOptionPaths by mutableStateOf<InaccessibleOptionPathsState?>(null)
+        private set
+
+    fun dismissInaccessibleOptionPathsError() {
+        inaccessibleOptionPaths = null
+    }
+
+    /**
+     * Non-null when a bundle requires a newer morphe-patcher than the one bundled
+     * in this version of Morphe.
+     *
+     * @param requiredVersion  The minimum patcher version declared in the bundle.
+     * @param bundleName       The display name of the offending bundle.
+     */
+    data class IncompatiblePatcherVersionState(
+        val requiredVersion: String,
+        val bundleName: String,
+    )
+    var incompatiblePatcherVersion by mutableStateOf<IncompatiblePatcherVersionState?>(null)
+        private set
+
+    fun dismissIncompatiblePatcherVersion() {
+        incompatiblePatcherVersion = null
+    }
+
+    /**
+     * Called when the user acknowledges the storage permission warning and chooses
+     * to proceed anyway (e.g. after granting MANAGE_EXTERNAL_STORAGE in settings
+     * and returning to the app, or if they believe the path is accessible).
+     * Re-validates paths on IO dispatcher before starting the worker - if the
+     * user actually granted the permission, the paths will now be readable.
+     */
+    fun retryAfterPermission() {
+        inaccessibleOptionPaths = null
+        viewModelScope.launch {
+            runPreflightCheck()
+        }
+    }
+
+    /**
+     * Called when the user dismisses the battery optimization pre-flight dialog.
+     * Marks the preference so the dialog is never shown again and resumes the preflight check.
+     */
+    fun onBatteryOptimizationDialogResult() {
+        viewModelScope.launch {
+            prefs.batteryOptimizationRequested.update(true)
+            batteryOptimizationDialog = false
+            runPreflightCheck()
+        }
+    }
+
+    private suspend fun gatherScopedBundles(): Map<Int, PatchBundleInfo.Scoped> =
+        patchBundleRepository.scopedBundleInfoFlow(
+            packageName,
+            input.selectedApp.version,
+            input.selectedApp.versionCode
+        ).first().associateBy { it.uid }
+
+    /**
+     * Patches the sources declare unavailable for [installerType], so the finished app can name
+     * what it was built without instead of leaving the user to spot the missing patch.
+     */
+    suspend fun unavailablePatchNames(installerType: InstallerType): List<String> =
+        gatherScopedBundles().values
+            .flatMap { it.patches }
+            .filter { it.lockState(installerType, SELECTION_APK_ARCHITECTURE) == PatchLockState.LOCKED_OFF }
+            .map { it.name }
+            .distinct()
+            .sorted()
+
+    suspend fun collectSelectedBundleMetadata(): List<PatchSourceRef> {
+        val globalBundles = patchBundleRepository.bundleInfoFlow.first()
+        val scopedBundles = gatherScopedBundles()
+        val sanitizedSelection = sanitizeSelection(appliedSelection, scopedBundles)
+        val displayNames = patchBundleRepository.sources.first().associate { it.uid to it.displayTitle }
+
+        return sanitizedSelection.keys.mapNotNull { uid ->
+            val name = (displayNames[uid] ?: scopedBundles[uid]?.name ?: globalBundles[uid]?.name)
+                ?.takeIf { it.isNotBlank() }
+                ?: return@mapNotNull null
+            PatchSourceRef(
+                name = name,
+                version = globalBundles[uid]?.version?.takeIf { it.isNotBlank() }
+            )
+        }.distinctBy { it.name }
+    }
+
+    private suspend fun buildExportMetadata(packageInfo: PackageInfo?): PatchedAppExportData? {
+        val info = packageInfo ?: pm.getPackageInfo(outputFile) ?: return null
+        val sources = collectSelectedBundleMetadata()
+        val label = runCatching { with(pm) { info.label() } }.getOrNull()
+        val versionName = info.versionName?.takeUnless { it.isBlank() } ?: version ?: "unspecified"
+        return PatchedAppExportData(
+            appName = label,
+            packageName = info.packageName,
+            appVersion = versionName,
+            patchBundleVersions = sources.mapNotNull { it.version },
+            patchBundleNames = sources.map { it.name }
+        )
+    }
+
+    /**
+     * Collects app and bundle metadata to populate [PatcherErrorInfo] in the error dialog.
+     * Called after patching fails so the dialog opens instantly without an extra async wait.
+     */
+    suspend fun buildErrorInfo(): PatcherErrorInfo {
+        val label = runCatching {
+            pm.getPackageInfo(outputFile)?.let { with(pm) { it.label() } }
+        }.getOrNull()
+        val bundles = collectSelectedBundleMetadata().map {
+            PatcherErrorInfo.BundleInfo(name = it.name, version = it.version)
+        }
+        return PatcherErrorInfo(
+            appName = label ?: packageName,
+            packageName = packageName,
+            appVersion = version ?: "unspecified",
+            bundles = bundles
+        )
+    }
+
+    private fun refreshExportMetadata() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val metadata = buildExportMetadata(null)
+            withContext(Dispatchers.Main) {
+                exportMetadata = metadata
+            }
+        }
+    }
+
+    private suspend fun ensureExportMetadata() {
+        if (exportMetadata != null) return
+        val metadata = buildExportMetadata(null) ?: return
+        withContext(Dispatchers.Main) {
+            exportMetadata = metadata
+        }
+    }
+
+    private val tempDir = savedStateHandle.saveable(key = "tempDir") {
+        fs.uiTempDir.resolve("installer").also {
+            it.deleteRecursively()
+            it.mkdirs()
+        }
+    }
+
+    private var _inputFile: File? = null
+    var inputFile: File?
+        get() = _inputFile
+        set(value) { _inputFile = value }
+
+    /**
+     * True when [inputFile] is owned by this VM and safe to drop after install.
+     */
+    val inputFileIsDisposable: Boolean
+        get() {
+            val file = inputFile ?: return false
+            // Files under originalApksDir back the repatch flow and outlive this VM.
+            val savedOriginalsRoot = fs.originalApksDir.absolutePath + File.separator
+            if (file.absolutePath.startsWith(savedOriginalsRoot)) return false
+            return (selectedApp as? SelectedApp.Local)?.temporary == true
+        }
+
+    val outputFile = tempDir.resolve("output.apk")
+
+    private val patchCount = input.selectedPatches.values.sumOf { it.size }
+
+    private val restoredProgress: Bundle? = savedStateHandle[KEY_PROGRESS]
+
+    /**
+     * Step, log and progress state of this run. Shared with the patching screens through
+     * [PatchProgressSource] so the batch queue can render the very same UI, and restored
+     * from [SavedStateHandle] when the process was killed while the worker kept going.
+     */
+    val patchRun = PatchRunProgress(
+        context = app,
+        scope = viewModelScope,
+        totalPatches = patchCount,
+        splitStepActive = initialSplitRequirement(input.selectedApp),
+        restoredSteps = restoredProgress?.let {
+            BundleCompat.getParcelableArrayList(it, KEY_STEPS, Step::class.java)
+        },
+        restoredCompletedPatches = restoredProgress?.getInt(KEY_COMPLETED_PATCHES) ?: 0
+    )
+
+    val steps: List<Step> get() = patchRun.steps
+    val progress: Float get() = patchRun.progress
+    val patchesProgress get() = patchRun.patchesProgress
+
+    private val workManager = WorkManager.getInstance(app)
+    private val _patcherSucceeded = MutableLiveData<Boolean?>()
+    val patcherSucceeded: LiveData<Boolean?> = _patcherSucceeded
+    private var observeWorkerJob: Job? = null
+    private val handledFailureIds = mutableSetOf<UUID>()
+    private var forceKeepLocalInput = false
+
+    private var patcherWorkerId: ParcelUuid?
+        get() = savedStateHandle["patcher_worker_id"]
+        set(value) {
+            if (value == null) {
+                savedStateHandle.remove<ParcelUuid>("patcher_worker_id")
+            } else {
+                savedStateHandle["patcher_worker_id"] = value
+            }
+        }
+
+    /** Patch sources collected during preflight, forwarded to the worker for logging. */
+    private var patchSourcesForLog: List<PatchSourceRef> = emptyList()
+
+    /** True when the current patching step has been running for over a minute. */
+    val showLongStepWarning: StateFlow<Boolean> = patchRun.showLongStepWarning
+
+    /**
+     * Emits true once after a successful export or install to prompt the notification permission
+     * dialog. Resets to false after the UI acknowledges it via [consumeNotificationPrompt].
+     */
+    private val _shouldPromptNotification = MutableStateFlow(false)
+    val shouldPromptNotification: StateFlow<Boolean> = _shouldPromptNotification.asStateFlow()
+
+    /**
+     * Emits true after the first successful install to prompt the onboarding tour dialog.
+     * Always follows [shouldPromptNotification]; fires only after the notification dialog closes.
+     * Resets to false after the UI acknowledges it via [consumeTourPrompt].
+     */
+    private val _shouldPromptTour = MutableStateFlow(false)
+    val shouldPromptTour: StateFlow<Boolean> = _shouldPromptTour.asStateFlow()
+
+    init {
+        restoreOutcome()
+
+        // The pipeline and the outcome survive process death, so a run that continued in the
+        // worker while the UI was gone comes back exactly where it was left
+        savedStateHandle.setSavedStateProvider(KEY_PROGRESS) {
+            Bundle().apply {
+                putParcelableArrayList(KEY_STEPS, ArrayList(patchRun.steps))
+                putInt(KEY_COMPLETED_PATCHES, patchRun.completedPatches)
+                putBoolean(KEY_SUCCESS_SCREEN, showSuccessScreen)
+                _patcherSucceeded.value?.let { putBoolean(KEY_SUCCEEDED, it) }
+            }
+        }
+
+        val existingId = patcherWorkerId?.uuid
+        if (existingId != null) {
+            observeWorker(existingId)
+        } else {
+            viewModelScope.launch {
+                // Resolve inputFile before preflight check to prevent race condition
+                // where the worker could start before inputFile is set.
+                if (inputFile == null && input.selectedApp is SelectedApp.Installed) {
+                    withContext(Dispatchers.IO) {
+                        val originalApk = originalApkRepository.get(packageName)
+                        if (originalApk != null) {
+                            val file = File(originalApk.filePath)
+                            if (file.exists()) {
+                                inputFile = file
+                            }
+                        }
+                    }
+                }
+                runPreflightCheck()
+            }
+        }
+        patchRun.startStallWatch()
+    }
+
+    /**
+     * Puts back the outcome of a run that had already finished when the process was killed.
+     * Without it the screen resumes in its in-progress state and only catches up once [WorkInfo]
+     * arrives, which is what makes a long-finished run flick past the log screen on the way to
+     * the finished one.
+     */
+    private fun restoreOutcome() {
+        val progress = restoredProgress ?: return
+        if (!progress.containsKey(KEY_SUCCEEDED)) return
+
+        _patcherSucceeded.value = progress.getBoolean(KEY_SUCCEEDED)
+        showSuccessScreen = progress.getBoolean(KEY_SUCCESS_SCREEN)
+        isPatching = false
+    }
+
+    private suspend fun runPreflightCheck() {
+        val scopedBundles = gatherScopedBundles()
+        val sanitizedSelection = sanitizeSelection(appliedSelection, scopedBundles)
+        val missing = mutableListOf<String>()
+        appliedSelection.forEach { (uid, patches) ->
+            val kept = sanitizedSelection[uid] ?: emptySet()
+            patches.filterNot { it in kept }.forEach { missing += it }
+        }
+        if (missing.isNotEmpty()) {
+            missingPatchWarning = MissingPatchWarningState(
+                patchNames = missing.distinct().sorted()
+            )
+            return
+        }
+
+        patchSourcesForLog = collectSelectedBundleMetadata()
+
+        // Check that all selected bundles are compatible with the patcher bundled in this
+        // version of the manager. If a bundle requires a newer patcher, block and show a dialog
+        // asking the user to update the manager app
+        val globalBundlesForCheck = patchBundleRepository.bundleInfoFlow.first()
+        appliedSelection.keys.forEach { uid ->
+            val bundle = globalBundlesForCheck[uid] ?: return@forEach
+            val required = bundle.patcherVersion ?: return@forEach
+            if (isPatcherOutdated(required, BuildConfig.PATCHER_VERSION)) {
+                incompatiblePatcherVersion = IncompatiblePatcherVersionState(
+                    requiredVersion = required,
+                    bundleName = bundle.name,
+                )
+                return
+            }
+        }
+
+        // Validate any file-system paths supplied as patch options before handing off to the worker
+        val optionsToValidate = if (prefs.useExpertMode.getBlocking()) {
+            input.options
+        } else {
+            patchOptionsPrefs.exportPatchOptions(packageName)
+        }
+
+        val pathFailures = withContext(Dispatchers.IO) { validateOptionPaths(optionsToValidate) }
+        if (pathFailures.isNotEmpty()) {
+            inaccessibleOptionPaths = InaccessibleOptionPathsState(pathFailures)
+            return
+        }
+
+        val powerManager = app.getSystemService(PowerManager::class.java)
+        if (prefs.useExpertMode.get() && !powerManager.isIgnoringBatteryOptimizations(app.packageName) && !prefs.batteryOptimizationRequested.get()) {
+            batteryOptimizationDialog = true
+            return
+        }
+
+        startWorker()
+    }
+
+    private fun startWorker() {
+        val workId = launchWorker()
+        patcherWorkerId = ParcelUuid(workId)
+        observeWorker(workId)
+    }
+
+    /**
+     * Save original APK file for future repatching.
+     * Called after successful patching, independent of installation method.
+     * For split APK archives: inputFile points to the merged mono-APK already saved to
+     * originalApksDir by the worker via onMergedApkReady - this call will detect the
+     * existing record and skip re-saving.
+     * For regular APK files, saves the APK itself.
+     *
+     * Thread-safe: uses mutex to prevent concurrent saves from observeWorker and persistPatchedApp.
+     */
+    private suspend fun saveOriginalApkIfNeeded() = saveOriginalApkMutex.withLock {
+        try {
+            // Determine which file to save.
+            // For SelectedApp.Local with a split archive: inputFile is updated to the merged
+            // mono-APK via setInputFile(merged=true) after prepareIfNeeded() completes, so
+            // we always use inputFile here - it already points to the correct file.
+            val fileToSave = when (val selected = input.selectedApp) {
+                is SelectedApp.Local -> inputFile ?: selected.file
+                else -> inputFile
+            }
+
+            if (fileToSave == null || !fileToSave.exists()) {
+                Log.w(TAG, "File to save doesn't exist, skipping original APK save")
+                return@withLock
+            }
+
+            // Get version from the package info
+            // Use outputFile (patched APK) because inputFile might be deleted by worker!
+            // For split archives: selected.file (archive) won't have valid PackageInfo
+            // For regular APKs: inputFile might be deleted
+            val apkPackageInfo = pm.getPackageInfo(outputFile)
+            if (apkPackageInfo == null) {
+                Log.w(TAG, "Cannot get package info from output APK, skipping save")
+                return@withLock
+            }
+
+            val originalVersion = apkPackageInfo.versionName?.takeUnless { it.isBlank() }
+                ?: input.selectedApp.version
+                ?: "unknown"
+
+            // Does original already exist in repository?
+            val existing = originalApkRepository.get(packageName)
+            if (existing != null && existing.version == originalVersion) {
+                Log.d(TAG, "Original APK already exists in repository (version $originalVersion), skipping duplicate save")
+                return@withLock
+            }
+
+            // If we got here, we need to save the original
+            val savedFile = originalApkRepository.saveOriginalApk(
+                packageName = packageName,
+                version = originalVersion,
+                sourceFile = fileToSave
+            )
+
+            if (savedFile != null) {
+                Log.i(TAG, "Original APK/archive saved: ${savedFile.name}")
+            }
+        } catch (e: Exception) {
+            // Don't fail patching if save fails
+            Log.w(TAG, "Failed to save original APK", e)
+        }
+    }
+
+    suspend fun persistPatchedApp(
+        currentPackageName: String?,
+        installType: InstallType
+    ): Boolean = withContext(NonCancellable + Dispatchers.IO) {
+        // NonCancellable: this body must run to completion even if the caller's scope is
+        // canceled mid-way, so the DB row never diverges from the installed APK
+        val installedPackageInfo = currentPackageName?.let(pm::getPackageInfo)
+        val patchedPackageInfo = pm.getPackageInfo(outputFile)
+        val packageInfo = patchedPackageInfo ?: installedPackageInfo
+        if (packageInfo == null) {
+            Log.e(TAG, "Failed to resolve package info for patched APK")
+            return@withContext false
+        }
+
+        // This call is safe, it will skip if already saved
+        saveOriginalApkIfNeeded()
+
+        val finalPackageName = packageInfo.packageName
+        val finalVersion = packageInfo.versionName?.takeUnless { it.isBlank() } ?: version ?: "unspecified"
+
+        val savePatchedEnabled = prefs.savePatchedApks.get()
+
+        // When patched APK retention is off and the user only exported the APK, treat the export
+        // as terminal: skip both the internal copy and the DB entry so the app is not surfaced
+        // as an installed patched app with no file to back it.
+        if (!savePatchedEnabled && installType == InstallType.SAVED) {
+            val metadata = buildExportMetadata(patchedPackageInfo ?: packageInfo)
+            withContext(Dispatchers.Main) {
+                exportMetadata = metadata
+            }
+            return@withContext true
+        }
+
+        // Delete old version file if it exists and is different
+        val existingApp = installedAppRepository.get(finalPackageName)
+        if (existingApp != null && existingApp.version != finalVersion) {
+            val oldFile = fs.getPatchedAppFile(finalPackageName, existingApp.version)
+            if (oldFile.exists()) {
+                oldFile.delete()
+                Log.d(TAG, "Deleted old patched app file: ${oldFile.name}")
+            }
+        }
+
+        // Save new version
+        val savedCopy = fs.getPatchedAppFile(finalPackageName, finalVersion)
+        if (savePatchedEnabled) {
+            try {
+                savedCopy.parentFile?.mkdirs()
+                outputFile.copyTo(savedCopy, overwrite = true)
+            } catch (error: IOException) {
+                if (installType == InstallType.SAVED) {
+                    Log.e(TAG, "Failed to copy patched APK for later", error)
+                    return@withContext false
+                } else {
+                    Log.w(TAG, "Failed to update saved copy for $finalPackageName", error)
+                }
+            }
+        }
+
+        val metadata = buildExportMetadata(patchedPackageInfo ?: packageInfo)
+        withContext(Dispatchers.Main) {
+            exportMetadata = metadata
+        }
+
+        // Use original package name to get scoped bundles for selection persistence
+        // This ensures all applied patches are correctly saved
+        val scopedBundlesForSelection = patchBundleRepository.scopedBundleInfoFlow(
+            packageName,
+            input.selectedApp.version,
+            input.selectedApp.versionCode
+        ).first().associateBy { it.uid }
+        val sanitizedSelection = sanitizeSelection(appliedSelection, scopedBundlesForSelection)
+        val sanitizedOptions = sanitizeOptions(appliedOptions, scopedBundlesForSelection)
+
+        val selectionPayload = patchBundleRepository.snapshotSelection(sanitizedSelection)
+
+        installedAppRepository.addOrUpdate(
+            finalPackageName,
+            packageName,
+            finalVersion,
+            installType,
+            sanitizedSelection,
+            selectionPayload
+        )
+
+        patchSelectionRepository.updateSelection(
+            packageName,
+            sanitizedSelection,
+            scope = scopedBundlesForSelection.keys
+        )
+        patchOptionsRepository.saveOptions(packageName, sanitizedOptions)
+        appliedSelection = sanitizedSelection
+        appliedOptions = sanitizedOptions
+
+        savedPatchedApp = savedPatchedApp || installType == InstallType.SAVED || savedCopy.exists()
+        true
+    }
+
+    override var downloadProgress by savedStateHandle.saveable(
+        key = "downloadProgress",
+        stateSaver = autoSaver()
+    ) {
+        mutableStateOf<Pair<Long, Long?>?>(null)
+    }
+        private set
+
+    /**
+     * True while an APK export is in progress. Observed by UI to disable the save button.
+     */
+    private val _isSaving = MutableStateFlow(false)
+    val isSaving: StateFlow<Boolean> = _isSaving.asStateFlow()
+
+    fun export(uri: Uri?) = viewModelScope.launch {
+        uri?.let { targetUri ->
+            if (_isSaving.value) return@let
+            _isSaving.value = true
+            try {
+                ensureExportMetadata()
+                finishExport(app.exportApkTo(outputFile, targetUri))
+            } finally {
+                _isSaving.value = false
+            }
+        }
+    }
+
+    /**
+     * Shared post-export logic: persists the patched app record, shows a toast,
+     * and triggers the notification prompt on success.
+     */
+    private suspend fun finishExport(exportSucceeded: Boolean) {
+        if (!exportSucceeded) {
+            app.toast(app.getString(R.string.saved_app_export_failed))
+            return
+        }
+
+        val saved = persistPatchedApp(null, InstallType.SAVED)
+
+        if (!saved) {
+            app.toast(app.getString(R.string.patched_app_save_failed_toast))
+        } else {
+            app.toast(app.getString(R.string.save_apk_success))
+            delay(2.seconds)
+        }
+
+        if (saved) triggerNotificationPromptIfNeeded()
+    }
+
+
+    /**
+     * Checks prefs and triggers the notification prompt if conditions are met.
+     * Called after a successful install or export so UI doesn't read prefs directly.
+     */
+    fun triggerNotificationPromptIfNeeded() {
+        viewModelScope.launch {
+            if (!prefs.notificationPermissionRequested.get() &&
+                !prefs.backgroundUpdateNotifications.get()
+            ) {
+                _shouldPromptNotification.value = true
+            }
+        }
+    }
+
+    /**
+     * Triggers post-install prompts in order: notification permission (if needed), then
+     * onboarding tour (if first launch). The tour waits for the notification dialog to close
+     * before appearing, so the two dialogs never overlap.
+     */
+    fun triggerPostInstallPromptsIfNeeded() {
+        viewModelScope.launch {
+            val needsNotification = !prefs.notificationPermissionRequested.get() &&
+                    !prefs.backgroundUpdateNotifications.get()
+            val needsTour = prefs.firstLaunch.get()
+
+            if (needsNotification) _shouldPromptNotification.value = true
+            if (needsTour) {
+                _shouldPromptNotification.first { !it }
+                _shouldPromptTour.value = true
+            }
+        }
+    }
+
+    fun consumeNotificationPrompt() {
+        _shouldPromptNotification.value = false
+    }
+
+    fun consumeTourPrompt() {
+        _shouldPromptTour.value = false
+    }
+
+    /**
+     * Notifies ViewModel that the user responded to the notification permission dialog.
+     * Handles prefs writes and FCM/worker setup so UI doesn't need coroutine scope for prefs.
+     */
+    fun onNotificationPermissionResult(
+        granted: Boolean,
+        hasGms: Boolean
+    ) {
+        viewModelScope.launch {
+            prefs.notificationPermissionRequested.update(true)
+            if (granted) {
+                prefs.backgroundUpdateNotifications.update(true)
+                val useManagerPrereleases = prefs.useManagerPrereleases.get()
+                val usePatchesPrereleases = prefs.bundlePrereleasesEnabled.get()
+                    .contains(DEFAULT_SOURCE_UID.toString())
+                syncFcmTopics(
+                    notificationsEnabled = true,
+                    useManagerPrereleases = useManagerPrereleases,
+                    usePatchesPrereleases = usePatchesPrereleases
+                )
+                if (!hasGms) UpdateCheckWorker.schedule(app, prefs.updateCheckInterval.get())
+            }
+        }
+    }
+
+    fun rejectInteraction() {
+        currentActivityRequest?.first?.complete(false)
+    }
+
+    fun allowInteraction() {
+        currentActivityRequest?.first?.complete(true)
+    }
+
+    fun handleActivityResult(result: ActivityResult) {
+        launchedActivity?.complete(result)
+    }
+
+    private fun launchWorker(): UUID =
+        workerRepository.launchExpedited<PatcherWorker, PatcherWorker.Args>(
+            buildWorkerArgs()
+        )
+
+    private fun buildWorkerArgs(): PatcherWorker.Args {
+        val selectedForRun = when (val selected = input.selectedApp) {
+            is SelectedApp.Local -> {
+                val reuseFile = inputFile ?: selected.file
+                val temporary = if (forceKeepLocalInput) false else selected.temporary
+                selected.copy(file = reuseFile, temporary = temporary)
+            }
+
+            else -> selected
+        }
+
+        val shouldPreserveInput =
+            selectedForRun is SelectedApp.Local && (selectedForRun.temporary || forceKeepLocalInput)
+
+        // Determine which patches and options to use based on mode
+        val useExpertMode = prefs.useExpertMode.getBlocking()
+
+        val mergedOptions = if (useExpertMode) {
+            // Expert mode: Use options from input
+            input.options
+        } else {
+            // Simple mode: Use options from preferences manager
+            runBlocking {
+                patchOptionsPrefs.exportPatchOptions(packageName)
+            }
+        }
+
+        return PatcherWorker.Args(
+            selectedForRun,
+            outputFile.path,
+            input.selectedPatches,
+            mergedOptions,
+            patchRun.logger,
+            onPatchCompleted = { patchRun.onPatchCompleted() },
+            setInputFile = { file, needsSplit, merged ->
+                val storedFile = if (shouldPreserveInput) {
+                    val existing = inputFile
+                    if (existing?.exists() == true) {
+                        // Reuse the already-copied file from a previous attempt (e.g. OOM retry).
+                        // Do NOT delete it here - it is still the valid input for this run
+                        existing
+                    } else withContext(Dispatchers.IO) {
+                        // Clean up a stale reference that no longer exists on disk before
+                        // creating a new copy, so we don't accumulate input-*.apk files in
+                        // tempDir across multiple OOM retries
+                        inputFile?.takeIf { !it.exists() }?.let {
+                            Log.d(TAG, "Stale inputFile reference cleared: ${it.name}")
+                        }
+                        val destination = File(fs.tempDir, "input-${System.currentTimeMillis()}.apk")
+                        file.copyTo(destination, overwrite = true)
+                        destination
+                    }
+                } else file
+
+                withContext(Dispatchers.Main) {
+                    inputFile = storedFile
+                    patchRun.updateSplitRequirement(storedFile, needsSplit, merged)
+                }
+            },
+            onProgress = patchRun::onProgress,
+            patchSources = patchSourcesForLog,
+        )
+    }
+
+    private fun observeWorker(id: UUID) {
+        observeWorkerJob?.cancel()
+        observeWorkerJob = viewModelScope.launch {
+            workManager.getWorkInfoByIdFlow(id).collect { workInfo ->
+                // WorkManager prunes finished work eventually, and a record that is simply gone
+                // says nothing about a run whose outcome was restored after process death
+                if (workInfo == null && _patcherSucceeded.value != null) return@collect
+
+                when (workInfo?.state) {
+                    WorkInfo.State.SUCCEEDED -> {
+                        forceKeepLocalInput = false
+                        patchRun.stopStallWatch()
+
+                        // Save original APK before deleting temporary file (blocking).
+                        // Launched independently so cancelling observeWorkerJob (new patch run)
+                        // does not interrupt cleanup that is already in progress.
+                        viewModelScope.launch(Dispatchers.IO) {
+                            try {
+                                saveOriginalApkIfNeeded()
+                            } finally {
+                                withContext(Dispatchers.Main) {
+                                    // Delete temporary input file after saving
+                                    cleanupTemporaryInput()
+                                    refreshExportMetadata()
+                                    patchingCompletedAt = System.currentTimeMillis()
+                                    patchingCompletedInForeground = _patcherSucceeded.hasActiveObservers()
+                                    isPatching = false
+                                    _patcherSucceeded.value = true
+                                    scheduleAutoInstallIfNeeded()
+                                    scheduleSuccessScreen()
+                                }
+                            }
+                        }
+                    }
+
+                    WorkInfo.State.FAILED -> {
+                        patchRun.stopStallWatch()
+                        handleWorkerFailure(workInfo)
+                        isPatching = false
+                        _patcherSucceeded.value = false
+                        showSuccessScreen = true
+                    }
+
+                    WorkInfo.State.RUNNING,
+                    WorkInfo.State.ENQUEUED,
+                    WorkInfo.State.BLOCKED -> {
+                        isPatching = true
+                        _patcherSucceeded.value = null
+                    }
+                    else -> _patcherSucceeded.value = null
+                }
+            }
+        }
+    }
+
+    private fun scheduleSuccessScreen() = viewModelScope.launch {
+        val elapsed = patchingCompletedAt?.let { System.currentTimeMillis() - it } ?: 0L
+        delay((2000L - elapsed).coerceAtLeast(0L).milliseconds)
+        showSuccessScreen = true
+    }
+
+    private fun scheduleAutoInstallIfNeeded() = viewModelScope.launch {
+        if (!prefs.autoInstallWithShizuku.get()) return@launch
+        val installerPrimary = prefs.installerPrimary.get()
+        if (installerPrimary != InstallerPreferenceTokens.SHIZUKU &&
+            installerPrimary != InstallerPreferenceTokens.SHIZUKU_PLAY_STORE
+        ) return@launch
+        if (prefs.promptInstallerOnInstall.get()) return@launch
+        _autoInstallChannel.trySend(Unit)
+    }
+
+    private fun handleWorkerFailure(workInfo: WorkInfo) {
+        if (!handledFailureIds.add(workInfo.id)) return
+        val exitCode = workInfo.outputData.getInt(PatcherWorker.PROCESS_EXIT_CODE_KEY, Int.MIN_VALUE)
+        if (exitCode == ProcessRuntime.OOM_EXIT_CODE) {
+            viewModelScope.launch {
+                if (!prefs.useProcessRuntime.get()) return@launch
+                forceKeepLocalInput = true
+                val previousFromWorker = workInfo.outputData.getInt(
+                    PatcherWorker.PROCESS_PREVIOUS_LIMIT_KEY,
+                    -1
+                )
+                val previousLimit = if (previousFromWorker > 0) previousFromWorker else prefs.patcherProcessMemoryLimit.get()
+                val newLimit = (previousLimit - MEMORY_ADJUSTMENT_MB).coerceAtLeast(MIN_LIMIT_MB)
+                val adjusted = newLimit < previousLimit
+                if (adjusted) {
+                    prefs.patcherProcessMemoryLimit.update(newLimit)
+                }
+                memoryAdjustmentDialog = MemoryAdjustmentDialogState(
+                    previousLimit = previousLimit,
+                    newLimit = if (adjusted) newLimit else previousLimit,
+                    adjusted = adjusted
+                )
+            }
+        }
+    }
+
+    private fun initialSplitRequirement(selectedApp: SelectedApp): Boolean =
+        when (selectedApp) {
+            is SelectedApp.Local -> SplitApkPreparer.isSplitArchive(selectedApp.file)
+            else -> false
+        }
+
+    private fun sanitizeSelection(
+        selection: PatchSelection,
+        bundles: Map<Int, PatchBundleInfo.Scoped>
+    ): PatchSelection = buildMap {
+        selection.forEach { (uid, patches) ->
+            val bundle = bundles[uid]
+            if (bundle == null) {
+                // Keep unknown bundles so applied patches stay visible even if the source is missing.
+                if (patches.isNotEmpty()) put(uid, patches.toSet())
+                return@forEach
+            }
+
+            val valid = bundle.patches.map { it.name }.toSet()
+            val kept = patches.filter { it in valid }.toSet()
+            if (kept.isNotEmpty()) {
+                put(uid, kept)
+            } else if (patches.isNotEmpty()) {
+                // If everything was filtered out by compatibility, still keep the original set so
+                // the app info screen can show the applied bundle/patch names.
+                put(uid, patches.toSet())
+            }
+        }
+    }
+
+    private fun sanitizeOptions(
+        options: Options,
+        bundles: Map<Int, PatchBundleInfo.Scoped>
+    ): Options = buildMap {
+        options.forEach { (uid, patchOptions) ->
+            val bundle = bundles[uid] ?: return@forEach
+            val patches = bundle.patches.associateBy { it.name }
+            val filtered = buildMap {
+                patchOptions.forEach { (patchName, values) ->
+                    val patch = patches[patchName] ?: return@forEach
+                    val validKeys = patch.options?.map { it.key }?.toSet() ?: emptySet()
+                    val kept = if (validKeys.isEmpty()) values else values.filterKeys { it in validKeys }
+                    if (kept.isNotEmpty()) put(patchName, kept)
+                }
+            }
+            if (filtered.isNotEmpty()) put(uid, filtered)
+        }
+    }
+
+    /**
+     * Immediately cancels the patcher worker.
+     * Called when the user confirms cancellation so the worker stops before
+     * the ViewModel is cleared, preventing background CPU/RAM usage that causes UI jank.
+     */
+    fun cancelPatching() {
+        patcherWorkerId?.uuid?.let(workManager::cancelWorkById)
+    }
+
+    private fun cleanupTemporaryInput() {
+        if (input.selectedApp is SelectedApp.Local && input.selectedApp.temporary) {
+            inputFile?.takeIf { it.exists() }?.delete()
+            inputFile = null
+            patchRun.updateSplitRequirement(null)
+        }
+    }
+
+    /**
+     * Stops any patching-completion tone that might still be playing.
+     * Called directly from the UI for an instant cutoff on Home tap, and again from
+     * [onCleared] as a fallback for every other way of leaving the screen.
+     */
+    fun stopCompletionSound() {
+        PatcherWorker.stopCompletionSound()
+    }
+
+    override fun onCleared() {
+        patcherWorkerId?.uuid?.let(workManager::cancelWorkById)
+        cleanupTemporaryInput()
+        stopCompletionSound()
+
+        // Clean up the installer temp directory (contains output.apk and any intermediate files).
+        // This covers the case where the user navigates away before installing/exporting,
+        // or after a failed patch. The next PatcherViewModel creation will also deleteRecursively,
+        // but doing it here is more prompt and avoids holding ~XX MB until next launch.
+        tempDir.deleteRecursively()
+    }
+
+    private companion object {
+        private const val TAG = "Morphe Patcher"
+        private const val MEMORY_ADJUSTMENT_MB = 200
+        private const val MIN_LIMIT_MB = 200
+
+        private const val KEY_PROGRESS = "patch_progress"
+        private const val KEY_STEPS = "steps"
+        private const val KEY_COMPLETED_PATCHES = "completed_patches"
+        private const val KEY_SUCCEEDED = "succeeded"
+        private const val KEY_SUCCESS_SCREEN = "success_screen"
+    }
+}

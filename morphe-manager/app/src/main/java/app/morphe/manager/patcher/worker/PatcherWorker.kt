@@ -1,0 +1,536 @@
+package app.morphe.manager.patcher.worker
+
+import android.annotation.SuppressLint
+import android.app.ActivityManager
+import android.app.Notification
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
+import android.content.pm.ServiceInfo
+import android.graphics.drawable.Icon
+import android.os.Build
+import android.os.PowerManager
+import android.os.StatFs
+import android.util.Log
+import androidx.work.ForegroundInfo
+import androidx.work.WorkerParameters
+import androidx.work.workDataOf
+import app.morphe.manager.BuildConfig
+import app.morphe.manager.MainActivity
+import app.morphe.manager.ManagerApplication
+import app.morphe.manager.R
+import app.morphe.manager.data.platform.Filesystem
+import app.morphe.manager.data.room.apps.installed.InstallType
+import app.morphe.manager.domain.installer.RootInstaller
+import app.morphe.manager.domain.manager.InstallerPreferenceTokens
+import app.morphe.manager.domain.manager.KeystoreManager
+import app.morphe.manager.domain.manager.PreferencesManager
+import app.morphe.manager.domain.repository.InstalledAppRepository
+import app.morphe.manager.domain.repository.OriginalApkRepository
+import app.morphe.manager.domain.worker.Worker
+import app.morphe.manager.domain.worker.WorkerRepository
+import app.morphe.manager.patcher.logger.Logger
+import app.morphe.manager.patcher.patch.PatchSourceRef
+import app.morphe.manager.patcher.runtime.CoroutineRuntime
+import app.morphe.manager.patcher.runtime.ProcessRuntime
+import app.morphe.manager.patcher.split.SplitApkPreparer
+import app.morphe.manager.patcher.util.NativeLibStripper
+import app.morphe.manager.ui.model.SelectedApp
+import app.morphe.manager.ui.model.State
+import app.morphe.manager.util.*
+import com.topjohnwu.superuser.Shell
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
+import java.io.File
+
+typealias ProgressEventHandler = (name: String?, state: State?, message: String?) -> Unit
+
+class PatcherWorker(
+    context: Context,
+    parameters: WorkerParameters
+) : Worker<PatcherWorker.Args>(context, parameters), KoinComponent {
+    private val workerRepository: WorkerRepository by inject()
+    private val prefs: PreferencesManager by inject()
+    private val keystoreManager: KeystoreManager by inject()
+    private val pm: PM by inject()
+    private val fs: Filesystem by inject()
+    private val installedAppRepository: InstalledAppRepository by inject()
+    private val originalApkRepository: OriginalApkRepository by inject()
+    private val rootInstaller: RootInstaller by inject()
+
+    class Args(
+        val input: SelectedApp,
+        val output: String,
+        val selectedPatches: PatchSelection,
+        val options: Options,
+        val logger: Logger,
+        val onPatchCompleted: suspend () -> Unit,
+        val setInputFile: suspend (File, Boolean, Boolean) -> Unit,
+        val onProgress: ProgressEventHandler,
+        val patchSources: List<PatchSourceRef> = emptyList(),
+        /**
+         * Batch runs announce the whole queue once instead of every app, so the completion
+         * tone and notification are suppressed per item.
+         */
+        val announceCompletion: Boolean = true,
+        /** Apps already done and the queue total, null for a single run. */
+        val queuePosition: Pair<Int, Int>? = null
+    ) {
+        val packageName get() = input.packageName
+    }
+
+    /** Queue position shown in the ongoing notification, set once the args are claimed. */
+    private var queueLabel: String? = null
+
+    override suspend fun getForegroundInfo() =
+        ForegroundInfo(
+            NOTIFICATION_ID,
+            createNotification(),
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE else 0
+        )
+
+    @SuppressLint("WrongConstant")
+    private fun mainActivityPendingIntent(): PendingIntent {
+        val intent = Intent(applicationContext, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        return PendingIntent.getActivity(
+            applicationContext,
+            0,
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+    }
+
+    @SuppressLint("WrongConstant")
+    private fun createNotification(
+        stepName: String? = null,
+        patchProgress: Pair<Int, Int>? = null, // Completed to total patches
+        contentText: String? = null,
+    ): Notification {
+        val pendingIntent = mainActivityPendingIntent()
+        return Notification.Builder(applicationContext, UpdateNotificationManager.CHANNEL_PATCHER)
+            .setContentTitle(
+                stepName ?: applicationContext.getString(R.string.patcher_notification_title)
+            )
+            .setContentText(
+                contentText
+                    ?: queueLabel
+                    ?: applicationContext.getText(R.string.patcher_notification_text)
+            )
+            .apply {
+                if (patchProgress != null) {
+                    val (completed, total) = patchProgress
+                    setSubText("$completed / $total")
+                    setProgress(total, completed, false)
+                }
+            }
+            .setSmallIcon(Icon.createWithResource(applicationContext, R.drawable.ic_notification))
+            .setContentIntent(pendingIntent)
+            .setCategory(Notification.CATEGORY_SERVICE)
+            .setGroup(UpdateNotificationManager.GROUP_PATCHING)
+            .setOngoing(true)
+            .build()
+    }
+
+    private fun updatePatcherNotification(
+        stepName: String?,
+        patchProgress: Pair<Int, Int>? = null,
+        contentText: String? = null,
+    ) {
+        val notificationManager =
+            applicationContext.getSystemService(NotificationManager::class.java)
+        // Android won't visually switch from indeterminate → determinate on the same notification
+        // ID unless we first post a brief non-indeterminate update. Post the real notification
+        // directly - the determinate bar replaces the spinning one cleanly this way
+        notificationManager.notify(NOTIFICATION_ID, createNotification(stepName, patchProgress, contentText))
+    }
+
+    private fun showCompletionNotification(
+        succeeded: Boolean,
+        autoInstallPending: Boolean,
+        playSound: Boolean,
+        successSoundUri: String,
+        errorSoundUri: String,
+    ) {
+        if (playSound) CompletionSound.play(
+            applicationContext,
+            succeeded,
+            successSoundUri,
+            errorSoundUri
+        )
+        // Don't show "patching complete" when Shizuku auto-install will immediately follow
+        if (succeeded && autoInstallPending) return
+        // Don't notify when the app is in the foreground - user sees the result on screen
+        if (ManagerApplication.isInForeground) return
+        val notification = Notification.Builder(applicationContext, UpdateNotificationManager.CHANNEL_PATCHER)
+            .setContentTitle(
+                applicationContext.getString(
+                    if (succeeded) R.string.patcher_complete_title else R.string.patcher_failed_title
+                )
+            )
+            .setContentText(applicationContext.getText(R.string.patcher_notification_text))
+            .setSmallIcon(Icon.createWithResource(applicationContext, R.drawable.ic_notification))
+            .setContentIntent(mainActivityPendingIntent())
+            .setAutoCancel(true)
+            .build()
+        applicationContext.getSystemService(NotificationManager::class.java)
+            .notify(COMPLETION_NOTIFICATION_ID, notification)
+    }
+
+    override suspend fun doWork(): Result {
+        if (runAttemptCount > 0) {
+            Log.d(tag, "Android requested retrying but retrying is disabled.".logFmt())
+            return Result.failure()
+        }
+
+        try {
+            // This does not always show up for some reason
+            setForeground(getForegroundInfo())
+        } catch (e: Exception) {
+            // Foreground promotion can fail on some devices or when notification permission is
+            // denied. Log it but continue - patching still works, just with less OS protection
+            Log.w(tag, "Failed to promote worker to foreground service:".logFmt(), e)
+        }
+
+        val wakeLock: PowerManager.WakeLock =
+            (applicationContext.getSystemService(Context.POWER_SERVICE) as PowerManager)
+                .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "$tag::Patcher")
+                .apply {
+                    // No timeout: the finally block below always releases this lock, so a cap
+                    // would only risk the CPU sleeping mid-patch on large or slow devices
+                    @Suppress("WakelockTimeout")
+                    acquire()
+                    Log.d(tag, "Acquired wakelock.")
+                }
+
+        lateinit var args: Args
+        var patchingSucceeded = false
+        val result = try {
+            args = workerRepository.claimInput(this)
+            queueLabel = args.queuePosition?.let { (done, total) ->
+                applicationContext.getString(R.string.batch_patch_progress_counter, done, total)
+            }
+            runPatcher(args).also { if (it == Result.success()) patchingSucceeded = true }
+        } finally {
+            wakeLock.release()
+        }
+
+        // Only delete the temporary input APK after patching if not rooted, since root mount
+        // install still needs it. The UI install flow deletes disposable inputs after mounting.
+        if (patchingSucceeded && Shell.isAppGrantedRoot() == false) {
+            (args.input as? SelectedApp.Local)?.takeIf { it.temporary }?.file?.delete()
+        }
+
+        return result
+    }
+
+    private suspend fun runPatcher(args: Args): Result {
+
+        val totalPatches = args.selectedPatches.values.sumOf { it.size }
+        var completedPatches = 0
+        // Cached so onPatchCompleted can update the title without a string lookup race
+        val applyingPatchesLabel = applicationContext.getString(R.string.applying_patches)
+        val writingApkLabel = applicationContext.getString(R.string.patcher_step_write_patched)
+        val signingApkLabel = applicationContext.getString(R.string.patcher_step_sign_apk)
+        val isExpertMode = prefs.useExpertMode.get()
+        // Flipped once when the patching phase completes to trigger the writing-step notification
+        var patchingPhaseCompleted = false
+
+        fun updateProgress(name: String? = null, state: State? = null, message: String? = null) {
+            if (state == State.RUNNING) {
+                if (name != null) {
+                    updatePatcherNotification(stepName = name, patchProgress = null)
+                } else if (totalPatches > 0) {
+                    updatePatcherNotification(
+                        stepName = applyingPatchesLabel,
+                        patchProgress = completedPatches to totalPatches
+                    )
+                }
+            } else if (state == State.COMPLETED && !patchingPhaseCompleted
+                && completedPatches == totalPatches && totalPatches > 0
+            ) {
+                patchingPhaseCompleted = true
+                updatePatcherNotification(stepName = writingApkLabel, patchProgress = null)
+            }
+            args.onProgress(name, state, message)
+        }
+
+        val onPatchCompleted: suspend (String) -> Unit = { patchName ->
+            completedPatches++
+            // Update both title and progress bar together on every completed patch;
+            // in expert mode also show which patch just finished
+            updatePatcherNotification(
+                stepName = applyingPatchesLabel,
+                patchProgress = completedPatches to totalPatches,
+                contentText = if (isExpertMode && patchName.isNotBlank()) patchName else null,
+            )
+            args.onPatchCompleted()
+        }
+
+        val patchedApk = fs.tempDir.resolve("patched.apk")
+        var succeeded = false
+        var autoInstallPending = false
+        val completionSoundEnabled = prefs.patcherCompletionSound.get()
+        val successSoundUri = prefs.patcherSuccessSoundUri.get()
+        val errorSoundUri = prefs.patcherErrorSoundUri.get()
+
+        return try {
+            val startTime = System.currentTimeMillis()
+
+            if (args.input is SelectedApp.Installed) {
+                installedAppRepository.get(args.packageName)?.let {
+                    if (it.installType == InstallType.MOUNT) {
+                        rootInstaller.unmount(args.packageName)
+                    }
+                }
+            }
+
+            val inputFile = when (val selectedApp = args.input) {
+                is SelectedApp.Local -> {
+                    val needsSplit = SplitApkPreparer.isSplitArchive(selectedApp.file)
+                    args.setInputFile(selectedApp.file, needsSplit, false)
+                    selectedApp.file
+                }
+
+                is SelectedApp.Installed -> {
+                    val source = File(pm.getPackageInfo(selectedApp.packageName)!!.applicationInfo!!.sourceDir)
+                    args.setInputFile(source, false, false)
+                    source
+                }
+            }
+
+            val useProcessRuntime = prefs.useProcessRuntime.get()
+            val stripNativeLibs = prefs.stripUnusedNativeLibs.get()
+            val inputIsSplitArchive = SplitApkPreparer.isSplitArchive(inputFile)
+            val selectedCount = args.selectedPatches.values.sumOf { it.size }
+
+            // Log device environment for diagnostics
+            val memInfo = ActivityManager.MemoryInfo().also {
+                (applicationContext.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager)
+                    .getMemoryInfo(it)
+            }
+            val statFs = StatFs(applicationContext.filesDir.absolutePath)
+
+            // What this build of Morphe brings to the run. Every bug report needs the versions,
+            // and native lib stripping silently changes what ends up in the output APK.
+            // The bytecode mode is left out, the patcher logs it itself while writing dex
+            args.logger.info(
+                "$LOG_WORKER_PREFIX_BUILD " +
+                        "$LOG_WORKER_FIELD_MANAGER=${BuildConfig.VERSION_NAME} " +
+                        "$LOG_WORKER_FIELD_PATCHER=${BuildConfig.PATCHER_VERSION} " +
+                        "$LOG_WORKER_FIELD_NATIVE_LIBS=$stripNativeLibs"
+            )
+
+            args.logger.info(
+                "$LOG_WORKER_PREFIX_DEVICE " +
+                        "$LOG_WORKER_FIELD_ANDROID=${Build.VERSION.RELEASE} " +
+                        "$LOG_WORKER_FIELD_API=${Build.VERSION.SDK_INT} " +
+                        "$LOG_WORKER_FIELD_RAM_AVAIL=\"${formatBytes(memInfo.availMem)}\" " +
+                        "$LOG_WORKER_FIELD_RAM_TOTAL=\"${formatBytes(memInfo.totalMem)}\" " +
+                        "$LOG_WORKER_FIELD_STORAGE_AVAIL=\"${formatBytes(statFs.availableBytes)}\" " +
+                        "$LOG_WORKER_FIELD_STORAGE_TOTAL=\"${formatBytes(statFs.totalBytes)}\""
+            )
+
+            args.logger.info(
+                "Patching started at ${System.currentTimeMillis()} " +
+                        "pkg=${args.packageName} version=${args.input.version} " +
+                        "input=${inputFile.absolutePath} size=${inputFile.length()} " +
+                        "split=$inputIsSplitArchive patches=$selectedCount " +
+                        "device=${Build.MANUFACTURER} model=${Build.MODEL}"
+            )
+
+            // One line per source rather than a joined list, so a name and its version stay
+            // together no matter how many sources contributed to this run
+            args.patchSources.forEach { source ->
+                args.logger.info(
+                    "$LOG_WORKER_PREFIX_SOURCE $LOG_WORKER_FIELD_NAME=\"${source.name}\" " +
+                            "$LOG_WORKER_FIELD_VERSION=\"${source.version ?: "?"}\""
+                )
+            }
+
+            // Log runtime mode info
+            if (useProcessRuntime) {
+                val memLimit = prefs.patcherProcessMemoryLimit.get()
+                args.logger.info("$LOG_WORKER_PREFIX_RUNTIME process $LOG_WORKER_FIELD_MEMORY_LIMIT=$memLimit")
+            } else {
+                // CoroutineRuntime starts memory polling internally; only log the heap size here
+                args.logger.info("$LOG_PROCESS_PREFIX_COROUTINE_HEAP ${Runtime.getRuntime().maxMemory() / (1024 * 1024)}MB")
+                args.logger.info("$LOG_WORKER_PREFIX_RUNTIME coroutine")
+            }
+
+            // Execute patching. ProcessRuntime has its own retry loop that reduces memory on OOM
+            // If it still fails on Android <= Q, fall back to CoroutineRuntime
+            val runtime = if (useProcessRuntime) {
+                ProcessRuntime(applicationContext)
+            } else {
+                CoroutineRuntime(applicationContext)
+            }
+
+            // After merging a split archive (in either runtime), save the resulting mono-APK
+            // directly to originalApksDir so it is used for repatching instead of the archive
+            val onMergedApkReady: suspend (File) -> Unit = { mergedFile ->
+                val version = pm.getPackageInfo(mergedFile)?.versionName
+                    ?.takeUnless { it.isBlank() }
+                    ?: args.input.version
+                    ?: "unknown"
+                val savedFile = originalApkRepository.saveOriginalApk(
+                    packageName = args.packageName,
+                    version = version,
+                    sourceFile = mergedFile
+                )
+                args.setInputFile(savedFile ?: mergedFile, true, true)
+            }
+
+            try {
+                runtime.execute(
+                    inputFile.absolutePath,
+                    patchedApk.absolutePath,
+                    args.packageName,
+                    args.selectedPatches,
+                    args.options,
+                    args.logger,
+                    onPatchCompleted,
+                    ::updateProgress,
+                    stripNativeLibs,
+                    onMergedApkReady
+                )
+            } catch (e: Exception) {
+                if (!useProcessRuntime || Build.VERSION.SDK_INT > Build.VERSION_CODES.Q || !isOomRelated(e)) {
+                    throw e
+                }
+
+                args.logger.warn("Process runtime OOM on Android ${Build.VERSION.RELEASE}, falling back to coroutine runtime")
+
+                CoroutineRuntime(applicationContext).execute(
+                    inputFile.absolutePath,
+                    patchedApk.absolutePath,
+                    args.packageName,
+                    args.selectedPatches,
+                    args.options,
+                    args.logger,
+                    onPatchCompleted,
+                    ::updateProgress,
+                    stripNativeLibs,
+                    onMergedApkReady
+                )
+            }
+
+            if (stripNativeLibs && !inputIsSplitArchive) {
+                NativeLibStripper.strip(patchedApk, args.logger)
+            }
+
+            updatePatcherNotification(stepName = signingApkLabel, patchProgress = null)
+            keystoreManager.sign(patchedApk, File(args.output))
+            updateProgress(state = State.COMPLETED) // Signing
+
+            val elapsed = System.currentTimeMillis() - startTime
+
+            args.logger.info(
+                "$LOG_WORKER_PREFIX_SUCCEEDED output=${args.output} " +
+                        "$LOG_WORKER_FIELD_SIZE=${File(args.output).length()} " +
+                        "$LOG_WORKER_FIELD_ELAPSED=${elapsed}ms"
+            )
+
+            Log.i(tag, "Patching succeeded".logFmt())
+            val installerPrimary = prefs.installerPrimary.get()
+            autoInstallPending = prefs.autoInstallWithShizuku.get() &&
+                    (installerPrimary == InstallerPreferenceTokens.SHIZUKU ||
+                            installerPrimary == InstallerPreferenceTokens.SHIZUKU_PLAY_STORE) &&
+                    !prefs.promptInstallerOnInstall.get()
+            succeeded = true
+            Result.success()
+        } catch (e: ProcessRuntime.ProcessExitException) {
+            Log.e(
+                tag,
+                "Patcher process exited with code ${e.exitCode}".logFmt(),
+                e
+            )
+            val message = applicationContext.getString(
+                R.string.patcher_process_exit_message,
+                e.exitCode.toString()
+            )
+            updateProgress(state = State.FAILED, message = message)
+            val previousLimit = prefs.patcherProcessMemoryLimit.get()
+            Result.failure(
+                workDataOf(
+                    PROCESS_EXIT_CODE_KEY to e.exitCode,
+                    PROCESS_PREVIOUS_LIMIT_KEY to previousLimit,
+                    PROCESS_FAILURE_MESSAGE_KEY to message
+                )
+            )
+        } catch (e: ProcessRuntime.RemoteFailureException) {
+            Log.e(
+                tag,
+                "An exception occurred in the remote process while patching. ${e.originalStackTrace}".logFmt()
+            )
+            updateProgress(state = State.FAILED, message = e.originalStackTrace)
+            Result.failure(
+                workDataOf(PROCESS_FAILURE_MESSAGE_KEY to e.originalStackTrace)
+            )
+        } catch (e: Exception) {
+            Log.e(tag, "An exception occurred while patching".logFmt(), e)
+            updateProgress(state = State.FAILED, message = e.stackTraceToString())
+            Result.failure(
+                workDataOf(PROCESS_FAILURE_MESSAGE_KEY to e.stackTraceToString())
+            )
+        } finally {
+            if (!patchedApk.delete() && patchedApk.exists()) {
+                Log.w(tag, "Failed to delete temporary patched APK: ${patchedApk.absolutePath}".logFmt())
+            }
+            if (!isStopped && args.announceCompletion) showCompletionNotification(
+                succeeded,
+                autoInstallPending,
+                completionSoundEnabled,
+                successSoundUri,
+                errorSoundUri
+            )
+        }
+    }
+
+    private fun isOomRelated(e: Exception) = when (e) {
+        is ProcessRuntime.ProcessExitException ->
+            e.exitCode == ProcessRuntime.OOM_EXIT_CODE || e.exitCode == ProcessRuntime.SIGKILL_EXIT_CODE
+        is ProcessRuntime.RemoteFailureException ->
+            e.originalStackTrace.contains("OutOfMemoryError", ignoreCase = true)
+        else -> false
+    }
+
+    companion object {
+        private const val LOG_PREFIX = "[Worker]"
+        private fun String.logFmt() = "$LOG_PREFIX $this"
+
+        const val NOTIFICATION_ID = 1
+        const val COMPLETION_NOTIFICATION_ID = 2
+
+        /** Kept as the patcher screen's entry point now that the tone itself is shared. */
+        fun stopCompletionSound() = CompletionSound.stop()
+
+        const val PROCESS_EXIT_CODE_KEY = "process_exit_code"
+        const val PROCESS_PREVIOUS_LIMIT_KEY = "process_previous_limit"
+        const val PROCESS_FAILURE_MESSAGE_KEY = "process_failure_message"
+
+        const val LOG_WORKER_PREFIX_SUCCEEDED = "Patching succeeded:"
+        const val LOG_WORKER_PREFIX_DEVICE = "Device:"
+        const val LOG_WORKER_PREFIX_RUNTIME = "Runtime:"
+        const val LOG_WORKER_PREFIX_SOURCE = "Source:"
+        const val LOG_WORKER_PREFIX_BUILD = "Build:"
+
+        const val LOG_WORKER_FIELD_NAME = "name"
+        const val LOG_WORKER_FIELD_VERSION = "version"
+        const val LOG_WORKER_FIELD_MANAGER = "manager"
+        const val LOG_WORKER_FIELD_PATCHER = "patcher"
+        const val LOG_WORKER_FIELD_NATIVE_LIBS = "nativeLibs"
+        const val LOG_PROCESS_PREFIX_COROUTINE_HEAP = "App memory limit:"
+        const val LOG_WORKER_FIELD_SIZE = "size"
+        const val LOG_WORKER_FIELD_MEMORY_LIMIT = "memoryLimit"
+        const val LOG_WORKER_FIELD_ELAPSED = "elapsed"
+        const val LOG_WORKER_FIELD_ANDROID = "android"
+        const val LOG_WORKER_FIELD_API = "api"
+        const val LOG_WORKER_FIELD_RAM_AVAIL = "ramAvail"
+        const val LOG_WORKER_FIELD_RAM_TOTAL = "ramTotal"
+        const val LOG_WORKER_FIELD_STORAGE_AVAIL = "storageAvail"
+        const val LOG_WORKER_FIELD_STORAGE_TOTAL = "storageTotal"
+    }
+}

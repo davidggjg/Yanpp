@@ -1,0 +1,421 @@
+/*
+ * Copyright 2026 Morphe.
+ * https://github.com/MorpheApp/morphe-manager
+ */
+
+package app.morphe.manager.ui.screen.shared
+
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
+import app.morphe.manager.util.isDarkBackground
+import kotlin.time.Duration.Companion.milliseconds
+
+/** Provides the primary text color for dialog content. */
+val LocalDialogTextColor = compositionLocalOf { Color.White }
+
+/** Provides the secondary/hint text color for dialog content. */
+val LocalDialogSecondaryTextColor = compositionLocalOf { Color.White.copy(alpha = 0.7f) }
+
+/** Horizontal inset of the active [DialogPadding], for offsetting a caller-managed [ListScrollbar] out to the true dialog edge. */
+val LocalDialogHorizontalInset = compositionLocalOf { 0.dp }
+
+
+/** Controls outer padding and inset behavior of [AppDialog]. */
+enum class DialogPadding {
+    /** Standard 32dp outer padding with system bar insets. */
+    Normal,
+    /** Compact 16dp outer padding with system bar insets. */
+    Compact,
+    /** No padding and no insets — caller handles layout entirely. */
+    None
+}
+
+/** Visual style of a [DialogTitleAction]. */
+enum class DialogTitleActionStyle {
+    /** Flat [IconButton], 24dp icon, dialog text tint. Use for info/reset actions */
+    Plain,
+    /** Tonal 36dp circle with errorContainer palette, 20dp icon. Use for bulk destructive actions */
+    Destructive
+}
+
+/**
+ * Unified fullscreen dialog component.
+ *
+ * @param onDismissRequest Called when user dismisses the dialog.
+ * @param title Optional title displayed at the top.
+ * @param titleTrailingContent Optional content displayed after the title.
+ * @param footer Optional footer content.
+ * @param dismissOnClickOutside Whether clicking outside dismisses the dialog.
+ * @param scrollable Whether to wrap content in verticalScroll and draw a [ListScrollbar] and [ScrollToTopButton] over it.
+ * Set to false for LazyColumn, where the caller wires up its own scroll state, scrollbar and button. Default is true.
+ * @param padding Outer padding mode. Default is [DialogPadding.Normal].
+ * @param contentArrangement Vertical arrangement of the dialog content.
+ * @param content Dialog content.
+ */
+@Composable
+fun AppDialog(
+    onDismissRequest: () -> Unit,
+    title: String? = null,
+    titleTrailingContent: (@Composable () -> Unit)? = null,
+    footer: (@Composable () -> Unit)? = null,
+    dismissOnClickOutside: Boolean = false,
+    scrollable: Boolean = true,
+    padding: DialogPadding = DialogPadding.Normal,
+    contentArrangement: Arrangement.Vertical = Arrangement.Center,
+    onEntered: (() -> Unit)? = null,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    val isDarkTheme = MaterialTheme.colorScheme.background.isDarkBackground()
+    var visible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        visible = true
+        // Notify caller once the enter animation has completed
+        if (onEntered != null) {
+            kotlinx.coroutines.delay(Defaults.ANIMATION_DURATION.toLong().milliseconds)
+            onEntered()
+        }
+    }
+
+    Dialog(
+        onDismissRequest = onDismissRequest,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnBackPress = true,
+            dismissOnClickOutside = false,
+            decorFitsSystemWindows = false
+        )
+    ) {
+        // Remove standard system backgrounds/window shadows
+        val dialogWindow = (LocalView.current.parent as? DialogWindowProvider)?.window
+        SideEffect {
+            dialogWindow?.let {
+                it.setDimAmount(0f)
+                it.setBackgroundDrawableResource(android.R.color.transparent)
+            }
+        }
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .then(
+                    if (dismissOnClickOutside) {
+                        Modifier.pointerInput(Unit) {
+                            detectTapGestures { onDismissRequest() }
+                        }
+                    } else Modifier
+                )
+        ) {
+
+            AnimatedVisibility(
+                visible = visible,
+                enter = Animations.dialogEnter,
+                exit = Animations.dialogExit,
+                modifier = Modifier.fillMaxSize()
+            ) {
+                DialogContent(
+                    title = title,
+                    titleTrailingContent = titleTrailingContent,
+                    footer = footer,
+                    isDarkTheme = isDarkTheme,
+                    scrollable = scrollable,
+                    padding = padding,
+                    contentArrangement = contentArrangement,
+                    content = content
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Fullscreen semi-transparent overlay dialog. Blocks all interaction behind it.
+ * Handles its own fade enter/exit animation via [Animations].
+ */
+@Composable
+fun Overlay(
+    visible: Boolean,
+    backgroundAlpha: Float = 0.75f,
+    content: @Composable BoxScope.() -> Unit
+) {
+    AnimatedVisibility(
+        visible = visible,
+        enter = Animations.overlayEnter,
+        exit = Animations.overlayExit
+    ) {
+        Dialog(
+            onDismissRequest = {},
+            properties = DialogProperties(
+                usePlatformDefaultWidth = false,
+                dismissOnBackPress = false,
+                dismissOnClickOutside = false,
+                decorFitsSystemWindows = false
+            )
+        ) {
+            val dialogWindow = (LocalView.current.parent as? DialogWindowProvider)?.window
+            SideEffect {
+                dialogWindow?.let {
+                    it.setDimAmount(0f)
+                    it.setBackgroundDrawableResource(android.R.color.transparent)
+                }
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background.copy(alpha = backgroundAlpha))
+                    .pointerInput(Unit) { detectTapGestures { } },
+                contentAlignment = Alignment.Center,
+                content = content
+            )
+        }
+    }
+}
+
+/**
+ * Semi-transparent overlay within a [Box] parent. Blocks all interaction and fades in/out.
+ * Must be called inside a [BoxScope] (e.g. as the last child of a Box).
+ */
+@Composable
+fun BoxScope.ContentOverlay(
+    visible: Boolean,
+    backgroundAlpha: Float = 0.8f,
+    content: @Composable BoxScope.() -> Unit
+) {
+    AnimatedVisibility(
+        visible = visible,
+        modifier = Modifier.matchParentSize(),
+        enter = Animations.overlayEnter,
+        exit = Animations.overlayExit
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.surface.copy(alpha = backgroundAlpha))
+                .pointerInput(Unit) {
+                    awaitPointerEventScope {
+                        while (true) {
+                            awaitPointerEvent(PointerEventPass.Initial).changes.forEach { it.consume() }
+                        }
+                    }
+                },
+            contentAlignment = Alignment.Center,
+            content = content
+        )
+    }
+}
+
+/**
+ * Icon action rendered inside the [AppDialog] title trailing slot. Uniforms the two
+ * button styles used across dialogs so callers only pick an icon and a semantic style.
+ */
+@Composable
+fun DialogTitleAction(
+    icon: ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    style: DialogTitleActionStyle = DialogTitleActionStyle.Plain
+) {
+    when (style) {
+        DialogTitleActionStyle.Plain -> {
+            IconButton(onClick = onClick, modifier = modifier) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = contentDescription,
+                    modifier = Modifier.size(24.dp),
+                    tint = LocalDialogTextColor.current
+                )
+            }
+        }
+
+        DialogTitleActionStyle.Destructive -> {
+            FilledTonalIconButton(
+                onClick = onClick,
+                modifier = modifier.size(36.dp),
+                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                    contentColor = MaterialTheme.colorScheme.onErrorContainer
+                )
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = contentDescription,
+                    modifier = Modifier.size(Defaults.IconSizeSmall)
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Main dialog content area.
+ */
+@Composable
+private fun DialogContent(
+    title: String?,
+    titleTrailingContent: (@Composable () -> Unit)?,
+    footer: (@Composable () -> Unit)?,
+    isDarkTheme: Boolean,
+    scrollable: Boolean,
+    padding: DialogPadding,
+    contentArrangement: Arrangement.Vertical,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    val isLandscape = isLandscape()
+
+    // Text colors based on theme
+    val textColor = if (isDarkTheme) Color.White else Color.Black
+    val secondaryTextColor =
+        if (isDarkTheme) Color.White.copy(alpha = 0.7f) else Color.Black.copy(alpha = 0.7f)
+
+    if (padding == DialogPadding.None) {
+        CompositionLocalProvider(
+            LocalDialogTextColor provides textColor,
+            LocalDialogSecondaryTextColor provides secondaryTextColor,
+            LocalContentColor provides textColor
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(Unit) { detectTapGestures { /* Consume clicks */ } }
+            ) {
+                content()
+            }
+        }
+        return
+    }
+
+    // Horizontal inset is applied per-section below rather than on this outer Box, so the content
+    // Box stays full width and its ListScrollbar can sit flush with the dialog edge instead of
+    // being pushed inward by the padding
+    val horizontalPadding = if (padding == DialogPadding.Compact) {
+        Defaults.ContentPadding
+    } else {
+        Defaults.ContentPaddingExpanded
+    }
+    // Compact mode zeroes its top padding when there is no title to fill it
+    val topPadding = when (padding) {
+        DialogPadding.Compact -> if (title != null) Defaults.ContentPadding else 0.dp
+        else -> Defaults.ContentPaddingExpanded
+    }
+    val bottomPadding = if (padding == DialogPadding.Compact) {
+        Defaults.ContentPadding
+    } else {
+        Defaults.ContentPaddingExpanded
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .systemBarsPadding()
+            .padding(top = topPadding, bottom = bottomPadding)
+            .pointerInput(Unit) {
+                detectTapGestures { /* Consume clicks */ }
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        CompositionLocalProvider(
+            LocalDialogTextColor provides textColor,
+            LocalDialogSecondaryTextColor provides secondaryTextColor,
+            LocalContentColor provides textColor,
+            LocalDialogHorizontalInset provides horizontalPadding
+        ) {
+            Column(
+                modifier = Modifier
+                    .widthIn(max = if (isLandscape) 600.dp else 450.dp)
+                    .fillMaxHeight(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = contentArrangement
+            ) {
+                // Title section
+                if (title != null) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = horizontalPadding, end = horizontalPadding, bottom = Defaults.ContentPadding),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Dialogs whose title tracks a state (download, install, result) swap
+                        // it in step with their content instead of snapping a new string in
+                        AnimatedContent(
+                            targetState = title,
+                            transitionSpec = Animations.fadeCrossfade(),
+                            modifier = Modifier.weight(1f),
+                            label = "dialogTitle"
+                        ) { currentTitle ->
+                            Text(
+                                text = currentTitle,
+                                style = MaterialTheme.typography.headlineMedium,
+                                fontWeight = FontWeight.Bold,
+                                textAlign = if (titleTrailingContent != null) TextAlign.Start else TextAlign.Center,
+                                color = textColor,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                        if (titleTrailingContent != null) titleTrailingContent()
+                    }
+                }
+
+                // Content area, wrapped in a Box so ListScrollbar can anchor to the true dialog
+                // edge while the scrollable column keeps its own horizontal inset.
+                // Scrollable variant adds verticalScroll + imePadding so the keyboard doesn't cover input fields.
+                // LazyColumn callers pass scrollable=false and wire up their own scrollbar
+                val scrollState = if (scrollable) rememberScrollState() else null
+                Box(
+                    modifier = Modifier.weight(1f, fill = false)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = horizontalPadding)
+                            .then(
+                                if (scrollState != null) {
+                                    Modifier.verticalScroll(scrollState).imePadding()
+                                } else Modifier
+                            )
+                    ) {
+                        content()
+                    }
+
+                    if (scrollState != null) {
+                        ListScrollbar(scrollState = scrollState)
+                        ScrollToTopButton(scrollState = scrollState)
+                    }
+                }
+
+                // Footer section
+                if (footer != null) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = horizontalPadding, end = horizontalPadding, top = Defaults.ContentPadding)
+                    ) {
+                        footer()
+                    }
+                }
+            }
+        }
+    }
+}

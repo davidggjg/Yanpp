@@ -1,0 +1,105 @@
+[versions]
+# Core
+junit = "6.1.2"
+kotlin = "2.4.10"
+
+# CLI
+picocli = "4.7.7"
+arsclib = "a28c6fb2a7"
+morphe-patcher = "1.8.0"
+morphe-library = "1.4.0"
+jadb = "1.2.3"
+
+# Compose Desktop
+compose = "1.11.1"
+
+# Networking
+ktor = "3.5.1"
+
+# DI
+koin-bom = "4.2.2"
+
+# Navigation
+voyager = "2.2.21-1.10.3"
+
+# Async / Serialization
+coroutines = "1.11.0"
+kotlinx-serialization = "1.11.0"
+
+# JNA (Windows DWM title bar tinting)
+jna = "5.19.1"
+
+# FileKit (native file/folder pickers across Win/macOS/Linux)
+filekit = "0.14.2"
+
+# Bootstrap GUI
+skiko = "0.144.6"
+materialIcons = "1.7.3"
+
+# Testing
+mockk = "1.14.11"
+
+# Logging
+slf4j = "2.0.18"
+
+# Libraries
+about-libraries = "15.0.4"
+
+[libraries]
+# Morphe Core
+arsclib = { module = "com.github.REAndroid:ARSCLib", version.ref = "arsclib" }
+junit-params = { module = "org.junit.jupiter:junit-jupiter-params", version.ref = "junit" }
+picocli = { module = "info.picocli:picocli", version.ref = "picocli" }
+morphe-patcher = { module = "app.morphe:morphe-patcher", version.ref = "morphe-patcher" }
+morphe-library = { module = "app.morphe:morphe-library-jvm", version.ref = "morphe-library" }
+jadb = { module = "app.morphe:jadb", version.ref = "jadb" }
+
+# Ktor Client
+ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
+ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }
+ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
+ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
+ktor-client-logging = { module = "io.ktor:ktor-client-logging", version.ref = "ktor" }
+
+# Koin
+koin-bom = { module = "io.insert-koin:koin-bom", version.ref = "koin-bom" }
+koin-core = { module = "io.insert-koin:koin-core" }
+koin-compose = { module = "io.insert-koin:koin-compose" }
+
+# Voyager Navigation
+voyager-navigator = { module = "cafe.adriel.voyager:voyager-navigator", version.ref = "voyager" }
+voyager-screenmodel = { module = "cafe.adriel.voyager:voyager-screenmodel", version.ref = "voyager" }
+voyager-koin = { module = "cafe.adriel.voyager:voyager-koin", version.ref = "voyager" }
+voyager-transitions = { module = "cafe.adriel.voyager:voyager-transitions", version.ref = "voyager" }
+
+# Coroutines
+kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
+kotlinx-coroutines-swing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "coroutines" }
+
+# Serialization
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
+
+# JNA (Windows DWM title bar tinting)
+jna = { module = "net.java.dev.jna:jna", version.ref = "jna" }
+jna-platform = { module = "net.java.dev.jna:jna-platform", version.ref = "jna" }
+
+# FileKit: native OS file/folder pickers (JNA on Win/macOS, XDG Desktop Portal on Linux)
+filekit-dialogs = { module = "io.github.vinceglb:filekit-dialogs", version.ref = "filekit" }
+
+# Testing
+kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
+mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
+
+# Logging
+slf4j-nop = { module = "org.slf4j:slf4j-nop", version.ref = "slf4j" }
+
+# About Libraries
+about-libraries-core = { group = "com.mikepenz", name = "aboutlibraries-compose-core", version.ref = "about-libraries" }
+about-libraries-m3 = { group = "com.mikepenz", name = "aboutlibraries-compose-m3", version.ref = "about-libraries" }
+
+[plugins]
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+compose = { id = "org.jetbrains.compose", version.ref = "compose" }
+about-libraries = { id = "com.mikepenz.aboutlibraries.plugin", version.ref = "about-libraries" }

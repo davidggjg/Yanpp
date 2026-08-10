@@ -1,0 +1,1140 @@
+/*
+ * Copyright 2026 Morphe.
+ * https://github.com/MorpheApp/morphe-manager
+ */
+
+package app.morphe.manager.ui.screen.home
+
+import androidx.appcompat.content.res.AppCompatResources
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
+import androidx.compose.material.icons.automirrored.outlined.Sort
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.outlined.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.*
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.morphe.manager.BuildConfig
+import app.morphe.manager.R
+import app.morphe.manager.domain.bundles.*
+import app.morphe.manager.domain.bundles.PatchBundleSource.Extensions.avatarUrls
+import app.morphe.manager.domain.bundles.PatchBundleSource.Extensions.isDefault
+import app.morphe.manager.domain.bundles.PatchBundleSource.Extensions.sourceType
+import app.morphe.manager.domain.manager.PreferencesManager
+import app.morphe.manager.domain.manager.SourceBundleSortMode
+import app.morphe.manager.domain.repository.BlocklistRepository
+import app.morphe.manager.domain.repository.PatchBundleRepository
+import app.morphe.manager.ui.screen.patcher.IncompatiblePatcherVersionDialog
+import app.morphe.manager.ui.screen.shared.*
+import app.morphe.manager.util.*
+import com.google.accompanist.drawablepainter.rememberDrawablePainter
+import kotlinx.coroutines.launch
+import org.koin.compose.koinInject
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
+import java.util.Locale
+
+/** Keeps the scrollbar clear of the sheet's bottom action row. */
+private val SourceListScrollbarBottomInset = 64.dp
+
+/**
+ * Bottom sheet for managing patch bundles.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun BundleManagementSheet(
+    onDismissRequest: () -> Unit,
+    onAddSource: () -> Unit,
+    onDelete: (PatchBundleSource) -> Unit,
+    onDisable: (PatchBundleSource) -> Unit,
+    onUpdate: (PatchBundleSource) -> Unit,
+    onRename: (PatchBundleSource) -> Unit,
+    onReorder: (List<Int>) -> Unit,
+    globalOnboardingState: GlobalOnboardingState? = null
+) {
+    val patchBundleRepository: PatchBundleRepository = koinInject()
+    val prefs: PreferencesManager = koinInject()
+    val scope = rememberCoroutineScope()
+
+    val sources by patchBundleRepository.sources.collectAsStateWithLifecycle(emptyList())
+    val patchCounts by patchBundleRepository.patchCountsFlow.collectAsStateWithLifecycle(emptyMap())
+    val manualUpdateInfo by patchBundleRepository.manualUpdateInfo.collectAsStateWithLifecycle(emptyMap())
+    val activeUpdateUids by patchBundleRepository.activeUpdateUidsFlow.collectAsStateWithLifecycle(emptySet())
+    val metadataFetchErrors by patchBundleRepository.metadataFetchErrors.collectAsStateWithLifecycle(emptyMap())
+    val experimentalVersionsEnabled by prefs.bundleExperimentalVersionsEnabled.getAsState()
+    val bundleInfo by patchBundleRepository.bundleInfoFlow.collectAsStateWithLifecycle(emptyMap())
+    val blockedSources by patchBundleRepository.blockedSources.collectAsStateWithLifecycle(emptyMap())
+
+    val showSheetOnboarding = globalOnboardingState?.sheetOnboardingActive == true
+
+    val bundleToDelete = remember { mutableStateOf<PatchBundleSource?>(null) }
+    var showSortDialog by remember { mutableStateOf(false) }
+    // Expanded state lifted out of LazyColumn so it survives scroll-off-screen recomposition
+    var expandedBundleUids by remember { mutableStateOf<Set<Int>>(emptySet()) }
+
+    // Drag-and-drop state
+    val listState = rememberLazyListState()
+    var listWindowY by remember { mutableFloatStateOf(0f) }
+    LaunchedEffect(globalOnboardingState) {
+        globalOnboardingState?.onScrollToFirstSource = {
+            scope.launch { listState.animateScrollToItem(0) }
+        }
+        globalOnboardingState?.onScrollToPrerelease = {
+            scope.launch {
+                val bounds = globalOnboardingState.sourcesPrereleaseBounds ?: return@launch
+                val offset = (bounds.top - listWindowY).coerceAtLeast(0f).toInt()
+                listState.animateScrollToItem(0, offset)
+            }
+        }
+    }
+    var localOrder by remember { mutableStateOf(sources.map { it.uid }) }
+    var isDragging by remember { mutableStateOf(false) }
+    LaunchedEffect(sources) {
+        if (isDragging) return@LaunchedEffect
+        val sourceUids = sources.map { it.uid }
+        val existing = localOrder.filter { uid -> uid in sourceUids }
+        val added = sourceUids.filter { it !in existing }
+        val merged = existing + added
+        if (merged != localOrder) localOrder = merged
+    }
+    val sortModePreference by prefs.sourceBundleSortMode.getAsState()
+    val sourceSortMode = SourceBundleSortMode.fromPreference(sortModePreference)
+    val isManualSort = sourceSortMode == SourceBundleSortMode.MANUAL
+    val orderedSources = remember(localOrder, sources, sourceSortMode) {
+        sources.sortedForSourceSort(sourceSortMode, localOrder)
+    }
+    val alphabetScrollMode = sourceSortMode == SourceBundleSortMode.NAME_ASC ||
+            sourceSortMode == SourceBundleSortMode.NAME_DESC
+    val sourceScrollTargets = remember(alphabetScrollMode, orderedSources) {
+        if (!alphabetScrollMode) {
+            emptyList()
+        } else {
+            buildIndexedScrollTargets(orderedSources) { source -> source.displayTitle }
+        }
+    }
+    val haptic = LocalHapticFeedback.current
+    val reorderableState = rememberReorderableLazyListState(listState) { from, to ->
+        val newOrder = localOrder.toMutableList()
+        val moved = newOrder.removeAt(from.index)
+        newOrder.add(to.index, moved)
+        localOrder = newOrder
+    }
+
+    val bundleToShowPatches = remember { mutableStateOf<PatchBundleSource?>(null) }
+    var bundleRequiringManagerUpdate by remember { mutableStateOf<PatchBundleSource?>(null) }
+    var bundleToShowChangelogUid by remember { mutableStateOf<Int?>(null) }
+    val bundleToShowChangelog = bundleToShowChangelogUid
+        ?.let { uid -> sources.filterIsInstance<RemotePatchBundle>().find { it.uid == uid } }
+    val bundleToShowChangelogKey = bundleToShowChangelog?.let {
+        val usePrerelease = (it as? APIPatchBundle)?.usePrerelease == true
+                || (it as? JsonPatchBundle)?.usePrerelease == true
+        "${it.installedVersionSignature}|$usePrerelease"
+    }
+
+    // Check if only default bundle exists
+    val isSingleDefaultBundle = sources.size == 1
+
+    // Auto-enable the default bundle if it's the only one and disabled
+    LaunchedEffect(sources) {
+        if (sources.size == 1) {
+            val singleBundle = sources.first()
+            if (singleBundle.isDefault && !singleBundle.enabled) {
+                onDisable(singleBundle) // This will toggle it to enabled
+            }
+        }
+    }
+
+    AppBottomSheet(onDismissRequest = onDismissRequest) {
+        val context = LocalContext.current
+        val uriHandler = LocalUriHandler.current
+        val failedToOpenUrlText = stringResource(R.string.sources_management_failed_to_open_url)
+
+        Box {
+            Column(Modifier.fillMaxWidth()) {
+                // Header - outside scrollable area
+                Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = stringResource(R.string.sources_management_title),
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = pluralStringResource(
+                                    R.plurals.sources_management_subtitle,
+                                    sources.size,
+                                    sources.size
+                                ),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            AnimatedVisibility(visible = sources.size >= 2) {
+                                val activeSortLabel = stringResource(sourceSortMode.labelRes)
+                                FilledIconButton(
+                                    onClick = { showSortDialog = true },
+                                    modifier = Modifier.semantics {
+                                        role = Role.Button
+                                        stateDescription = activeSortLabel
+                                    },
+                                    colors = IconButtonDefaults.filledIconButtonColors(
+                                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                                    )
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Outlined.Sort,
+                                        contentDescription = stringResource(R.string.sort)
+                                    )
+                                }
+                            }
+                            FilledIconButton(
+                                onClick = onAddSource,
+                                colors = IconButtonDefaults.filledIconButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                                )
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Add,
+                                    contentDescription = stringResource(R.string.add)
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+                }
+
+                // Bundle cards
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f, fill = false)
+                ) {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .navigationBarsPadding()
+                            .onGloballyPositioned { coords -> listWindowY = coords.boundsInWindow().top },
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(
+                            start = 16.dp,
+                            end = 16.dp,
+                            bottom = 16.dp
+                        )
+                    ) {
+                        items(orderedSources, key = { bundle -> bundle.uid }) { bundle ->
+                            val hasExperimentalVersions = remember(bundle.uid, bundleInfo) {
+                                bundleInfo[bundle.uid]?.patches?.any { patch ->
+                                    patch.compatiblePackages?.any { pkg ->
+                                        pkg.experimentalVersions?.isNotEmpty() == true
+                                    } == true
+                                } == true
+                            }
+                            val useExperimentalVersions = bundle.uid.toString() in experimentalVersionsEnabled
+
+                            val isFirstCard = bundle.uid == orderedSources.firstOrNull()?.uid
+                            ReorderableItem(reorderableState, key = bundle.uid) { itemIsDragging ->
+                                BundleManagementCard(
+                                    bundle = bundle,
+                                    patchCount = patchCounts[bundle.uid] ?: 0,
+                                    updateInfo = manualUpdateInfo[bundle.uid],
+                                    isUpdating = bundle.uid in activeUpdateUids,
+                                    metadataFetchError = metadataFetchErrors[bundle.uid],
+                                    blockedInfo = blockedSources[bundle.uid],
+                                    expanded = isSingleDefaultBundle || bundle.uid in expandedBundleUids ||
+                                        (showSheetOnboarding && isFirstCard),
+                                    onToggleExpanded = {
+                                        expandedBundleUids = if (bundle.uid in expandedBundleUids) {
+                                            expandedBundleUids - bundle.uid
+                                        } else {
+                                            expandedBundleUids + bundle.uid
+                                        }
+                                    },
+                                    onDelete = { bundleToDelete.value = bundle },
+                                    onDisable = { onDisable(bundle) },
+                                    onUpdate = { onUpdate(bundle) },
+                                    onRename = { onRename(bundle) },
+                                    onPrereleasesToggle = when {
+                                        bundle is JsonPatchBundle && bundle.supportsPrerelease ||
+                                                bundle is APIPatchBundle -> { usePrerelease ->
+                                            if (bundle.uid == bundleToShowChangelogUid) {
+                                                bundleToShowChangelogUid = null
+                                            }
+                                            bundle.clearChangelogCache()
+                                            scope.launch {
+                                                patchBundleRepository.setUsePrerelease(
+                                                    bundle.uid,
+                                                    usePrerelease
+                                                )
+                                            }
+                                        }
+
+                                        else -> null
+                                    },
+                                    onExperimentalVersionsToggle = if (hasExperimentalVersions) {
+                                        { useExperimental ->
+                                            scope.launch {
+                                                patchBundleRepository.setUseExperimentalVersions(
+                                                    bundle.uid,
+                                                    useExperimental
+                                                )
+                                            }
+                                        }
+                                    } else null,
+                                    hasExperimentalVersions = hasExperimentalVersions,
+                                    useExperimentalVersions = useExperimentalVersions,
+                                    onPatchesClick = { bundleToShowPatches.value = bundle },
+                                    onOutdatedManagerClick = { bundleRequiringManagerUpdate = bundle },
+                                    onVersionClick = {
+                                        if (bundle is RemotePatchBundle) {
+                                            bundleToShowChangelogUid = bundle.uid
+                                        }
+                                    },
+                                    onOpenInBrowser = {
+                                        val pageUrl = manualUpdateInfo[bundle.uid]?.pageUrl
+                                            ?: (bundle as? RemotePatchBundle)?.browsePageUrl
+                                            ?: SOURCE_REPO_URL
+                                        try {
+                                            uriHandler.openUri(pageUrl)
+                                        } catch (_: Exception) {
+                                            context.toast(failedToOpenUrlText)
+                                        }
+                                    },
+                                    forceExpanded = isSingleDefaultBundle,
+                                    isDragging = itemIsDragging,
+                                    longPressModifier = if (isManualSort) {
+                                        Modifier.longPressDraggableHandle(
+                                            onDragStarted = {
+                                                isDragging = true
+                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            },
+                                            onDragStopped = {
+                                                isDragging = false
+                                                onReorder(localOrder)
+                                            }
+                                        )
+                                    } else {
+                                        Modifier
+                                    },
+                                    onPatchesBtnPositioned = if (isFirstCard) { b -> globalOnboardingState?.sourcesPatchesBounds = b } else null,
+                                    onVersionPositioned = if (isFirstCard) { b -> globalOnboardingState?.sourcesVersionBounds = b } else null,
+                                    onPrereleaseBtnPositioned = if (isFirstCard) { b -> globalOnboardingState?.sourcesPrereleaseBounds = b } else null,
+                                    modifier = Modifier.zIndex(if (itemIsDragging) 1f else 0f)
+                                )
+                            }
+                        }
+                    }
+
+                    ListScrollbar(
+                        listState = listState,
+                        alphabetTargets = sourceScrollTargets,
+                        alphabetMode = alphabetScrollMode,
+                        extraBottomPadding = SourceListScrollbarBottomInset
+                    )
+
+                    ScrollToTopButton(
+                        listState = listState,
+                        extraBottomPadding = SourceListScrollbarBottomInset
+                    )
+                }
+            }
+        }
+    }
+
+    if (showSortDialog) {
+        SortModeSelectionDialog(
+            title = stringResource(R.string.sources_sort_title),
+            current = sourceSortMode,
+            options = sortModeOptions<SourceBundleSortMode>(),
+            onSelect = { mode ->
+                scope.launch { prefs.sourceBundleSortMode.update(mode.name) }
+                showSortDialog = false
+            },
+            onDismiss = { showSortDialog = false }
+        )
+    }
+
+    // Delete confirmation dialog
+    if (bundleToDelete.value != null) {
+        ConfirmDialog(
+            title = stringResource(R.string.delete),
+            message = stringResource(R.string.sources_dialog_delete_confirm_message, bundleToDelete.value!!.displayTitle),
+            primaryText = stringResource(R.string.delete),
+            onDismiss = { bundleToDelete.value = null },
+            onConfirm = {
+                onDelete(bundleToDelete.value!!)
+                bundleToDelete.value = null
+            }
+        )
+    }
+
+    // Patches dialog
+    if (bundleToShowPatches.value != null) {
+        BundlePatchesDialog(
+            onDismissRequest = { bundleToShowPatches.value = null },
+            src = bundleToShowPatches.value!!
+        )
+    }
+
+    // Outdated manager dialog, shared with the pre-flight check done when patching starts
+    bundleRequiringManagerUpdate?.let { bundle ->
+        IncompatiblePatcherVersionDialog(
+            bundleName = bundle.displayTitle,
+            requiredVersion = bundle.requiredPatcherVersion.orEmpty(),
+            onDismiss = { bundleRequiringManagerUpdate = null }
+        )
+    }
+
+    // Changelog dialog
+    if (bundleToShowChangelog != null) {
+        key(bundleToShowChangelogKey) {
+            BundleChangelogDialog(
+                src = bundleToShowChangelog,
+                onDismissRequest = { bundleToShowChangelogUid = null }
+            )
+        }
+    }
+}
+
+private fun List<PatchBundleSource>.sortedForSourceSort(
+    sortMode: SourceBundleSortMode,
+    manualOrder: List<Int>
+): List<PatchBundleSource> = when (sortMode) {
+    SourceBundleSortMode.MANUAL -> {
+        val byUid = associateBy { it.uid }
+        val ordered = manualOrder.mapNotNull { uid -> byUid[uid] }
+        val orderedUids = ordered.map { it.uid }.toSet()
+        ordered + filter { it.uid !in orderedUids }
+    }
+
+    SourceBundleSortMode.LAST_UPDATED -> sortedWith(
+        compareByDescending<PatchBundleSource> { it.updatedAt ?: it.createdAt ?: 0L }
+            .thenBy { it.sourceSortTitle() }
+            .thenBy { it.uid }
+    )
+
+    SourceBundleSortMode.NAME_ASC -> sortedWith(
+        compareBy<PatchBundleSource> { it.sourceSortTitle() }
+            .thenBy { it.uid }
+    )
+
+    SourceBundleSortMode.NAME_DESC -> sortedWith(
+        compareByDescending<PatchBundleSource> { it.sourceSortTitle() }
+            .thenBy { it.uid }
+    )
+
+    SourceBundleSortMode.ENABLED_FIRST -> sortedWith(
+        compareByDescending<PatchBundleSource> { it.enabled }
+            .thenBy { it.sourceSortTitle() }
+            .thenBy { it.uid }
+    )
+}
+
+private fun PatchBundleSource.sourceSortTitle(): String =
+    displayTitle.lowercase(Locale.ROOT)
+
+/**
+ * Card for individual bundle management.
+ */
+@Composable
+private fun BundleManagementCard(
+    bundle: PatchBundleSource,
+    modifier: Modifier = Modifier,
+    patchCount: Int,
+    updateInfo: PatchBundleRepository.ManualBundleUpdateInfo?,
+    isUpdating: Boolean = false,
+    isDragging: Boolean = false,
+    longPressModifier: Modifier = Modifier,
+    metadataFetchError: Throwable? = null,
+    blockedInfo: BlocklistRepository.BlockedEntry? = null,
+    expanded: Boolean,
+    onToggleExpanded: () -> Unit,
+    onDelete: () -> Unit,
+    onDisable: () -> Unit,
+    onUpdate: () -> Unit,
+    onRename: () -> Unit,
+    onPrereleasesToggle: ((Boolean) -> Unit)?,
+    onExperimentalVersionsToggle: ((Boolean) -> Unit)?,
+    onPatchesBtnPositioned: ((Rect) -> Unit)? = null,
+    onVersionPositioned: ((Rect) -> Unit)? = null,
+    onPrereleaseBtnPositioned: ((Rect) -> Unit)? = null,
+    hasExperimentalVersions: Boolean,
+    useExperimentalVersions: Boolean,
+    onPatchesClick: () -> Unit,
+    onVersionClick: () -> Unit,
+    onOpenInBrowser: () -> Unit,
+    onOutdatedManagerClick: () -> Unit,
+    forceExpanded: Boolean = false
+) {
+    // Localized strings for accessibility
+    val expandedState = stringResource(R.string.expanded)
+    val collapsedState = stringResource(R.string.collapsed)
+    val enabledState = stringResource(R.string.enabled)
+    val disabledState = stringResource(R.string.disabled)
+    val openInBrowser = stringResource(R.string.sources_management_open_in_browser)
+
+    val context = LocalContext.current
+    fun withToast(doneMessage: String, action: () -> Unit): () -> Unit = {
+        context.toast(doneMessage)
+        action()
+    }
+
+    val isBlocked = blockedInfo != null
+    val isEnabled = bundle.enabled && !isBlocked
+    val hasMetadataError = metadataFetchError != null
+    val isMissing = bundle.state is PatchBundleSource.State.Missing
+
+    val animatedColor by animateColorAsState(
+        targetValue = when {
+            !isEnabled -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.15f)
+            hasMetadataError || isMissing -> Color(0xFFFFF8E1).copy(alpha = 0.15f)
+            else -> MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp)
+        },
+        label = "bundle_card_color"
+    )
+
+    val animatedBorderColor by animateColorAsState(
+        targetValue = when {
+            !isEnabled -> MaterialTheme.colorScheme.error.copy(alpha = 0.5f)
+            hasMetadataError || isMissing -> Color(0xFFFFC107).copy(alpha = 0.5f)
+            else -> MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+        },
+        label = "bundle_card_border_color"
+    )
+
+    val scale by animateFloatAsState(
+        targetValue = if (isDragging) 1.03f else 1f,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "bundle_card_scale"
+    )
+
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .graphicsLayer { scaleX = scale; scaleY = scale },
+        shape = RoundedCornerShape(16.dp),
+        tonalElevation = if (isDragging) 8.dp else 3.dp,
+        color = animatedColor,
+        border = BorderStroke(1.dp, animatedBorderColor)
+    ) {
+        // Build content description
+        val updateLabel = stringResource(R.string.update)
+        val availableLabel = stringResource(R.string.available)
+        val contentDesc = remember(bundle.displayTitle, isEnabled, expanded, forceExpanded, updateInfo) {
+            buildString {
+                append(bundle.displayTitle)
+                append(", ")
+                if (isEnabled) {
+                    append(enabledState)
+                } else {
+                    append(disabledState)
+                }
+                if (!forceExpanded) {
+                    append(", ")
+                    append(if (expanded) expandedState else collapsedState)
+                }
+                updateInfo?.let {
+                    append(", ")
+                    append(updateLabel)
+                    append(" ")
+                    append(availableLabel)
+                }
+            }
+        }
+
+        Column(modifier = Modifier.padding(Defaults.ContentPadding)) {
+            // Click target only on the header so expanded children stay independently focusable for screen readers
+            BundleCardHeader(
+                bundle = bundle,
+                updateInfo = updateInfo,
+                expanded = expanded,
+                showChevron = !forceExpanded,
+                enabled = isEnabled,
+                metadataFetchError = metadataFetchError,
+                blockedInfo = blockedInfo,
+                modifier = longPressModifier
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() }
+                    ) {
+                        if (!forceExpanded) onToggleExpanded()
+                    }
+                    .semantics(mergeDescendants = true) {
+                        if (!forceExpanded) {
+                            role = Role.Button
+                            stateDescription = if (expanded) expandedState else collapsedState
+                        }
+                        this.contentDescription = contentDesc
+                    }
+            )
+
+            // Expanded content
+            AnimatedVisibility(
+                visible = expanded,
+                enter = Animations.expandVertEnter,
+                exit = Animations.shrinkVertExit
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(Defaults.ContentPaddingSmall)
+                ) {
+                    Column {
+                        // Blocked source banner (shown when the source appears on the remote blocklist)
+                        AnimatedVisibility(
+                            visible = blockedInfo != null,
+                            enter = Animations.expandFadeEnter,
+                            exit = Animations.shrinkFadeExit
+                        ) {
+                            val label = stringResource(R.string.sources_management_source_blocked_badge)
+                            val reason = blockedInfo?.reason?.trim()?.takeIf { it.isNotEmpty() }
+                                ?.replaceFirstChar { it.uppercaseChar() }
+                            Notice(
+                                text = if (reason != null) "$label: $reason" else label,
+                                icon = Icons.Outlined.Block,
+                                tone = SemanticTone.Error,
+                                density = NoticeDensity.Compact
+                            )
+                        }
+
+                        // Metadata unavailable hint (shown when patches-bundle.json / remote fetch failed)
+                        AnimatedVisibility(
+                            visible = metadataFetchError != null || bundle.state is PatchBundleSource.State.Missing,
+                            enter = Animations.expandFadeEnter,
+                            exit = Animations.shrinkFadeExit
+                        ) {
+                            val hintText = if (bundle.state is PatchBundleSource.State.Missing) {
+                                stringResource(R.string.sources_management_metadata_unavailable_hint_missing)
+                            } else {
+                                stringResource(R.string.sources_management_metadata_unavailable_hint)
+                            }
+                            Notice(
+                                text = hintText,
+                                icon = Icons.Outlined.CloudOff,
+                                tone = SemanticTone.Error,
+                                density = NoticeDensity.Compact
+                            )
+                        }
+
+                        // Outdated manager hint
+                        AnimatedVisibility(
+                            visible = bundle.requiresManagerUpdate,
+                            enter = Animations.expandFadeEnter,
+                            exit = Animations.shrinkFadeExit
+                        ) {
+                            Notice(
+                                modifier = Modifier.clickable(onClick = onOutdatedManagerClick),
+                                text = stringResource(
+                                    R.string.sources_management_outdated_manager_hint,
+                                    bundle.requiredPatcherVersion.orEmpty(),
+                                    BuildConfig.VERSION_NAME,
+                                    BuildConfig.PATCHER_VERSION
+                                ),
+                                icon = Icons.Outlined.SystemUpdate,
+                                tone = SemanticTone.Error,
+                                density = NoticeDensity.Compact
+                            )
+                        }
+                    }
+
+                    // Patches
+                    BundleInfoCard(
+                        modifier = Modifier.fillMaxWidth().then(
+                            if (onPatchesBtnPositioned != null)
+                                Modifier.onGloballyPositioned { coords ->
+                                    onPatchesBtnPositioned(coords.boundsInWindow())
+                                }
+                            else Modifier
+                        ),
+                        icon = Icons.Outlined.Info,
+                        title = stringResource(R.string.patches),
+                        value = patchCount.toString(),
+                        onClick = onPatchesClick,
+                        enabled = isEnabled && !isUpdating
+                    )
+
+                    // Version
+                    BundleInfoCard(
+                        modifier = Modifier.fillMaxWidth().then(
+                            if (onVersionPositioned != null)
+                                Modifier.onGloballyPositioned { coords ->
+                                    onVersionPositioned(coords.boundsInWindow())
+                                }
+                            else Modifier
+                        ),
+                        icon = Icons.Outlined.Update,
+                        title = stringResource(R.string.version),
+                        value = bundle.version?.removePrefix("v")?.isolateLtr() ?: "N/A",
+                        onClick = onVersionClick,
+                        enabled = !isUpdating
+                    )
+
+                    // Open in browser button
+                    if (bundle is RemotePatchBundle) {
+                        FilledTonalButton(
+                            onClick = onOpenInBrowser,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp)
+                                .semantics {
+                                    contentDescription = openInBrowser
+                                },
+                            shape = RoundedCornerShape(Defaults.CompactCornerRadius)
+                        ) {
+                            Icon(
+                                Icons.AutoMirrored.Outlined.OpenInNew,
+                                contentDescription = null
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(openInBrowser)
+                        }
+                    }
+
+                    SettingsDivider(fullWidth = true)
+
+                    // Resolve prerelease state once
+                    val currentUsePrerelease = when (bundle) {
+                        is JsonPatchBundle -> bundle.usePrerelease
+                        is APIPatchBundle -> bundle.usePrerelease
+                        else -> false
+                    }
+
+                    // Prerelease toggle (for JsonPatchBundle with GitHub endpoint or APIPatchBundle)
+                    if (onPrereleasesToggle != null) {
+                        ToggleRow(
+                            title = stringResource(R.string.sources_management_prerelease_toggle),
+                            description = stringResource(R.string.sources_management_prerelease_toggle_description),
+                            checked = currentUsePrerelease,
+                            onCheckedChange = onPrereleasesToggle,
+                            enabled = !isUpdating,
+                            isLoading = isUpdating,
+                            showDivider = false,
+                            rowModifier = if (onPrereleaseBtnPositioned != null)
+                                Modifier.onGloballyPositioned { coords -> onPrereleaseBtnPositioned(coords.boundsInWindow()) }
+                            else Modifier
+                        )
+                    }
+
+                    // Experimental versions toggle - shown for any bundle type that has experimental app version targets.
+                    // For remote bundles (prerelease supported) it additionally requires prereleases to be ON.
+                    AnimatedVisibility(
+                        visible = hasExperimentalVersions && onExperimentalVersionsToggle != null &&
+                                (onPrereleasesToggle == null || currentUsePrerelease),
+                        enter = Animations.expandFadeEnter,
+                        exit = Animations.shrinkFadeExit
+                    ) {
+                        ToggleRow(
+                            title = stringResource(R.string.sources_management_experimental_versions_toggle),
+                            description = stringResource(R.string.sources_management_experimental_versions_toggle_description),
+                            checked = useExperimentalVersions,
+                            onCheckedChange = { onExperimentalVersionsToggle?.invoke(it) },
+                            showDivider = false
+                        )
+                    }
+
+                    if (onPrereleasesToggle != null || (hasExperimentalVersions && onExperimentalVersionsToggle != null)) {
+                        SettingsDivider(fullWidth = true)
+                    }
+
+                    // Action bar
+                    ActionPillRow(modifier = Modifier.padding(top = 4.dp)) {
+                        if (!forceExpanded) {
+                            val disableEnableVerb = stringResource(
+                                if (bundle.enabled) R.string.disable else R.string.enable
+                            )
+                            val disableEnableDesc = disableEnableVerb + " " + bundle.displayTitle
+                            val disableToast = stringResource(
+                                if (bundle.enabled) R.string.sources_management_source_disabled
+                                else R.string.sources_management_source_enabled
+                            )
+
+                            val disableIcon = if (bundle.enabled)
+                                Icons.Outlined.Block
+                            else
+                                Icons.Outlined.CheckCircle
+
+                            Crossfade(
+                                targetState = disableIcon,
+                                label = "disable_icon"
+                            ) { icon ->
+                                // Disable button
+                                ActionPillButton(
+                                    onClick = withToast(disableToast, onDisable),
+                                    icon = icon,
+                                    contentDescription = disableEnableDesc,
+                                    tooltip = disableEnableVerb,
+                                    enabled = !isBlocked
+                                )
+                            }
+                        }
+
+                        val isLocal = bundle is LocalPatchBundle
+                        if (bundle is RemotePatchBundle || isLocal) {
+                            val updateVerb = stringResource(R.string.update)
+                            val updateDesc = updateVerb + " " + bundle.displayTitle
+                            val updateToast = stringResource(R.string.sources_management_source_updating)
+                            // Update button. A local source has nothing to fetch from, so it asks
+                            // for a replacement file instead and reports progress once one is picked
+                            ActionPillButton(
+                                onClick = if (isLocal) onUpdate else withToast(updateToast, onUpdate),
+                                icon = Icons.Outlined.Refresh,
+                                contentDescription = updateDesc,
+                                tooltip = updateVerb,
+                                enabled = !isBlocked
+                            )
+                        }
+
+                        if (!bundle.isDefault) {
+                            val renameVerb = stringResource(R.string.rename)
+                            val deleteVerb = stringResource(R.string.delete)
+                            val renameDesc = renameVerb + " " + bundle.displayTitle
+                            val deleteDesc = deleteVerb + " " + bundle.displayTitle
+                            // Rename button
+                            ActionPillButton(
+                                onClick = onRename,
+                                icon = Icons.Outlined.Edit,
+                                contentDescription = renameDesc,
+                                tooltip = renameVerb
+                            )
+
+                            // Delete button
+                            ActionPillButton(
+                                onClick = onDelete,
+                                icon = Icons.Outlined.Delete,
+                                contentDescription = deleteDesc,
+                                tooltip = deleteVerb,
+                                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                                    contentColor = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BundleCardHeader(
+    bundle: PatchBundleSource,
+    updateInfo: PatchBundleRepository.ManualBundleUpdateInfo?,
+    expanded: Boolean,
+    showChevron: Boolean,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    metadataFetchError: Throwable? = null,
+    blockedInfo: BlocklistRepository.BlockedEntry? = null,
+) {
+    val rotation by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        label = "expand_chevron"
+    )
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // Bundle icon with GitHub avatar support
+        BundleIcon(
+            bundle = bundle,
+            enabled = enabled,
+            metadataFetchError = metadataFetchError,
+            modifier = Modifier.size(44.dp)
+        )
+        // Title + badges + rename button
+        Column(modifier = Modifier.weight(1f)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = bundle.displayTitle,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            // Version • date
+            // When showChevron=false (single bundle): show only date, no version.
+            // When showChevron=true (multiple bundles): show version • date.
+            val timestamp = bundle.updatedAt ?: bundle.createdAt
+            val versionText = if (showChevron) bundle.version?.removePrefix("v") else null
+            val dateText = remember(timestamp) { timestamp?.let { getRelativeTimeString(it) } }
+
+            if (versionText != null || dateText != null) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    if (versionText != null) {
+                        Text(
+                            text = versionText,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    if (versionText != null && dateText != null) {
+                        Text(
+                            text = "  •  ",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    if (dateText != null) {
+                        Icon(
+                            imageVector = if (bundle.updatedAt != null) Icons.Outlined.Schedule else Icons.Outlined.CalendarToday,
+                            contentDescription = null,
+                            modifier = Modifier.size(11.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = dateText,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(2.dp))
+
+            FlowRow(
+                modifier = Modifier.animateContentSize(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                // Bundle type badge
+                BundleTypeBadge(bundle.sourceType)
+
+                // Metadata unavailable badge
+                AnimatedVisibility(
+                    visible = metadataFetchError != null || bundle.state is PatchBundleSource.State.Missing,
+                    enter = Animations.expandHorizFadeIn,
+                    exit = Animations.shrinkHorizFadeOut
+                ) {
+                    StatusBadge(
+                        text = stringResource(R.string.sources_management_metadata_unavailable),
+                        tone = SemanticTone.Error
+                    )
+                }
+
+                // Outdated manager badge
+                AnimatedVisibility(
+                    visible = bundle.requiresManagerUpdate,
+                    enter = Animations.expandHorizFadeIn,
+                    exit = Animations.shrinkHorizFadeOut
+                ) {
+                    StatusBadge(
+                        text = stringResource(R.string.sources_management_outdated_manager_badge),
+                        tone = SemanticTone.Error
+                    )
+                }
+
+                // Blocked badge
+                AnimatedVisibility(
+                    visible = blockedInfo != null,
+                    enter = Animations.expandHorizFadeIn,
+                    exit = Animations.shrinkHorizFadeOut
+                ) {
+                    StatusBadge(
+                        text = stringResource(R.string.sources_management_source_blocked_badge),
+                        tone = SemanticTone.Error
+                    )
+                }
+
+                // Disabled badge
+                AnimatedVisibility(
+                    visible = !enabled && blockedInfo == null,
+                    enter = Animations.expandHorizFadeIn,
+                    exit = Animations.shrinkHorizFadeOut
+                ) {
+                    StatusBadge(
+                        text = stringResource(R.string.disabled),
+                        tone = SemanticTone.Error
+                    )
+                }
+
+                // Update badge
+                if (updateInfo != null) {
+                    StatusBadge(
+                        text = stringResource(R.string.update),
+                        tone = SemanticTone.Warning
+                    )
+                }
+            }
+        }
+
+        // Chevron
+        if (showChevron) {
+            Icon(
+                imageVector = Icons.Outlined.ExpandMore,
+                contentDescription = null,
+                modifier = Modifier.rotate(rotation),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+fun BundleTypeBadge(type: BundleSourceType) {
+    val text = when (type) {
+        BundleSourceType.PreInstalled -> stringResource(R.string.sources_dialog_preinstalled)
+        BundleSourceType.Remote -> stringResource(R.string.sources_dialog_remote)
+        BundleSourceType.Local -> stringResource(R.string.sources_dialog_local)
+    }
+    StatusBadge(text = text)
+}
+
+@Composable
+fun BundleIcon(
+    bundle: PatchBundleSource,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    metadataFetchError: Throwable? = null
+) {
+    val avatarUrls = bundle.avatarUrls
+    val hasMetadataError = metadataFetchError != null
+    val hasBundleError = bundle.state is PatchBundleSource.State.Failed
+    val isMissing = bundle.state is PatchBundleSource.State.Missing
+
+    val animatedColor by animateColorAsState(
+        targetValue = when {
+            bundle.isDefault -> Color.White
+            hasBundleError -> MaterialTheme.colorScheme.errorContainer
+            hasMetadataError -> Color(0xFFFFF8E1)
+            enabled -> MaterialTheme.colorScheme.primaryContainer
+            else -> MaterialTheme.colorScheme.surfaceVariant
+        },
+        label = "bundle_icon_color"
+    )
+
+    val animatedAlpha by animateFloatAsState(
+        targetValue = if (enabled) 1f else 0.5f,
+        label = "bundle_icon_alpha"
+    )
+
+    Surface(
+        modifier = modifier.graphicsLayer { alpha = animatedAlpha },
+        shape = CircleShape,
+        color = animatedColor
+    ) {
+        when {
+            bundle.isDefault -> {
+                val context = LocalContext.current
+                Image(
+                    painter = rememberDrawablePainter(
+                        drawable = AppCompatResources.getDrawable(context, R.drawable.ic_launcher_foreground)
+                    ),
+                    contentDescription = null,
+                    contentScale = ContentScale.Fit,
+                    modifier = modifier
+                        .graphicsLayer {
+                            scaleX = 1.5f
+                            scaleY = 1.5f
+                        }
+                )
+            }
+
+            hasBundleError -> {
+                Icon(
+                    imageVector = Icons.Outlined.ErrorOutline,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onErrorContainer,
+                    modifier = Modifier.padding(10.dp)
+                )
+            }
+
+            hasMetadataError || isMissing -> {
+                Icon(
+                    imageVector = Icons.Outlined.CloudOff,
+                    contentDescription = null,
+                    tint = Color(0xFF4A3800),
+                    modifier = Modifier.padding(10.dp)
+                )
+            }
+
+            avatarUrls.primary != null -> {
+                RemoteAvatar(
+                    url = avatarUrls.primary,
+                    fallbackUrl = avatarUrls.fallback,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+
+            else -> {
+                Icon(
+                    imageVector = Icons.Outlined.Source,
+                    contentDescription = null,
+                    tint = if (enabled)
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(10.dp)
+                )
+            }
+        }
+    }
+}
