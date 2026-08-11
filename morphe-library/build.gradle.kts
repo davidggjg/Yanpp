@@ -132,5 +132,9 @@ publishing {
 
 signing {
     useGpgCmd()
+    // Only required when a real GPG signing key is configured (e.g. for an
+    // actual release publish); skip it for local/CI builds that just need
+    // publishToMavenLocal, which otherwise fails with "no default secret key".
+    isRequired = providers.gradleProperty("signing.gnupg.keyName").isPresent
     sign(publishing.publications)
 }
