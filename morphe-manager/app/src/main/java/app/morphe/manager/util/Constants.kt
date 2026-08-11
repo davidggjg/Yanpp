@@ -11,20 +11,36 @@ import app.morphe.manager.util.KnownApps.getAppName
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 
-const val tag = "Morphe Manager"
+const val tag = "Molt Manager"
 
-const val SOURCE_NAME = "Morphe Patches"
-const val MANAGER_REPO_URL = "https://github.com/MorpheApp/morphe-manager"
-const val SOURCE_REPO_URL = "https://github.com/MorpheApp/morphe-patches"
-const val MORPHE_API_URL = "https://api.morphe.software"
-const val MORPHE_WEBSITE_URL = "https://morphe.software"
-const val BLOCKED_SOURCES_URL = "$MORPHE_API_URL/v2/blocked-sources"
+/**
+ * Molt is served entirely out of its own repository - there is no Molt backend to run.
+ * Anything that upstream fetched from an API is a plain JSON file under [MOLT_DATA_BASE_URL].
+ */
+const val MOLT_REPO_URL = "https://github.com/davidggjg/Yanpp"
+const val MOLT_DATA_BASE_URL = "https://raw.githubusercontent.com/davidggjg/Yanpp/refs/heads/main/data"
+
+const val SOURCE_NAME = "Molt Patches"
+const val MANAGER_REPO_URL = MOLT_REPO_URL
+const val SOURCE_REPO_URL = MOLT_REPO_URL
+const val MORPHE_WEBSITE_URL = MOLT_REPO_URL
+
+/**
+ * Base for the `/v2/...` routes upstream served from its own backend. Molt runs no backend,
+ * so these requests 404 and callers fall through to their offline paths - the APKMirror web
+ * search in [app.morphe.manager.domain.manager.DownloadUrlResolver], and the cached blocklist.
+ * Pointed at our own repository so the app never talks to another project's servers.
+ */
+const val MORPHE_API_URL = MOLT_DATA_BASE_URL
+
+/** Static file in this repository - no server needed. */
+const val BLOCKED_SOURCES_URL = "$MOLT_DATA_BASE_URL/blocked-sources.json"
 
 /** Raw GitHub URL for the stable manager release JSON (main branch) */
-const val MANAGER_RELEASE_JSON_URL = "https://raw.githubusercontent.com/MorpheApp/morphe-manager/refs/heads/main/app-release.json"
+const val MANAGER_RELEASE_JSON_URL = "https://raw.githubusercontent.com/davidggjg/Yanpp/refs/heads/main/morphe-manager/app-release.json"
 
 /** Raw GitHub URL for the pre-release manager release JSON (dev branch) */
-const val MANAGER_PRERELEASE_JSON_URL = "https://raw.githubusercontent.com/MorpheApp/morphe-manager/refs/heads/dev/app-release.json"
+const val MANAGER_PRERELEASE_JSON_URL = "https://raw.githubusercontent.com/davidggjg/Yanpp/refs/heads/dev/morphe-manager/app-release.json"
 
 /** Controls whether manager updates are fetched directly from JSON files in the repository instead of using the GitHub API */
 const val USE_MANAGER_DIRECT_JSON = true

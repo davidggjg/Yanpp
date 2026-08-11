@@ -1,15 +1,29 @@
 <div align="center">
-  <img src="morphe-manager/assets/morphe_app_icon.png" width="128" alt="Morphe icon" />
-  <h1>Morphe</h1>
-  <p>A single, self-contained monorepo for the Morphe app patching ecosystem.</p>
+  <img src="morphe-manager/assets/molt_app_icon.png" width="128" alt="Molt icon" />
+  <h1>Molt</h1>
+  <p>Patch, unlock and reshape Android apps - one app, one repository, no backend.</p>
 </div>
 
 ## What this is
 
-Morphe lets you patch and enhance apps on your device (remove ads, unlock
-features, tweak behavior). This repository bundles every piece the app
-needs to build, as local sibling projects in one repo, so nothing is
-fetched from other GitHub repos at build time:
+Molt patches and enhances apps on your device: removes ads, unlocks
+features, tweaks behavior. It is built on two upstream lineages that are
+both GPLv3, kept in this single repository so a build never reaches out to
+another project's package registry:
+
+- the **Morphe** lineage - a newer patching engine with a richer manager
+  (batch patching, theming, custom app icons, APK management)
+- the **ReVanced** lineage - far wider app coverage
+
+Molt is its own product and brand. It is not affiliated with, endorsed by,
+or a redistribution of either upstream project's branding. Their code is
+used under the GPLv3 with attribution preserved; the Molt name and icon are
+ours.
+
+Everything the app used to fetch from a backend is a static JSON file in
+[`data/`](data) instead, so there is no server to run.
+
+| Directory                     | What it is                                              |
 
 | Directory                     | What it is                                              |
 | ------------------------------ | -------------------------------------------------------- |
