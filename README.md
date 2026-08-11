@@ -37,13 +37,15 @@ Plugin 8.9.3, while `morphe-manager` uses 9.3.1, and Gradle refuses to mix
 AGP versions inside one composite build. So instead of joining the
 composite build, it's published to `mavenLocal()` first (a separate Gradle
 process, so the AGP mismatch doesn't matter), and `morphe-manager` picks it
-up from there.
+up from there. `-PskipSigning` is passed because that project signs its
+publications with GPG, which needs a signing key we don't have and don't
+need for a local build.
 
 ## Building the APK
 
 ```bash
 cd morphe-library
-./gradlew publishToMavenLocal
+./gradlew publishToMavenLocal -PskipSigning
 
 cd ../morphe-manager
 ./gradlew assembleRelease

@@ -35,7 +35,7 @@ jobs:
           _JAVA_OPTIONS: "-Djava.awt.headless=true"
         run: |
           chmod +x ./gradlew
-          ./gradlew publishToMavenLocal --stacktrace
+          ./gradlew publishToMavenLocal -PskipSigning --stacktrace
 
       - name: Build signed release APK
         env:

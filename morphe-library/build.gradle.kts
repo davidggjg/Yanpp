@@ -130,11 +130,16 @@ publishing {
     }
 }
 
-signing {
-    useGpgCmd()
-    // Only required when a real GPG signing key is configured (e.g. for an
-    // actual release publish); skip it for local/CI builds that just need
-    // publishToMavenLocal, which otherwise fails with "no default secret key".
-    isRequired = providers.gradleProperty("signing.gnupg.keyName").isPresent
-    sign(publishing.publications)
+// Signing is only possible when a GPG secret key is present in the keyring
+// (the release workflow imports one). Builds that just need the artifacts
+// locally - e.g. publishToMavenLocal so morphe-manager can consume this
+// library - pass -PskipSigning and skip creating the Sign tasks entirely,
+// which would otherwise fail with "gpg: no default secret key".
+// Note: signing.isRequired does not help here, because useGpgCmd() always
+// reports a signatory as present, so the tasks still run and gpg still fails.
+if (!providers.gradleProperty("skipSigning").isPresent) {
+    signing {
+        useGpgCmd()
+        sign(publishing.publications)
+    }
 }
