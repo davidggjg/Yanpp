@@ -32,10 +32,20 @@ long as they all live next to each other — which they now do, flattened at
 the root of this repo — a build resolves everything locally instead of
 downloading `app.morphe:*` artifacts from GitHub Packages.
 
+`morphe-library` is the one exception: it's built with Android Gradle
+Plugin 8.9.3, while `morphe-manager` uses 9.3.1, and Gradle refuses to mix
+AGP versions inside one composite build. So instead of joining the
+composite build, it's published to `mavenLocal()` first (a separate Gradle
+process, so the AGP mismatch doesn't matter), and `morphe-manager` picks it
+up from there.
+
 ## Building the APK
 
 ```bash
-cd morphe-manager
+cd morphe-library
+./gradlew publishToMavenLocal
+
+cd ../morphe-manager
 ./gradlew assembleRelease
 ```
 

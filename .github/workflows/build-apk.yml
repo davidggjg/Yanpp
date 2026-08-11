@@ -29,6 +29,14 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Publish morphe-library to mavenLocal
+        working-directory: morphe-library
+        env:
+          _JAVA_OPTIONS: "-Djava.awt.headless=true"
+        run: |
+          chmod +x ./gradlew
+          ./gradlew publishToMavenLocal --stacktrace
+
       - name: Build signed release APK
         env:
           _JAVA_OPTIONS: "-Djava.awt.headless=true"

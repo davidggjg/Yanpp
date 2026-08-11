@@ -54,10 +54,14 @@ dependencyResolutionManagement {
 rootProject.name = "morphe-manager"
 include(":app")
 
-// Include morphe-patcher and morphe-library as composite builds if they exist locally
+// Include morphe-patcher as a composite build if it exists locally.
+// morphe-library can't join this composite build: it's on AGP 8.9.3 while
+// this project is on AGP 9.3.1, and Gradle refuses to mix AGP versions
+// within one composite build. Instead, morphe-library is published to
+// mavenLocal() (see the root build workflow) and resolved from there,
+// since mavenLocal() is checked before GitHub Packages below.
 mapOf(
     "morphe-patcher" to "app.morphe:morphe-patcher",
-    "morphe-library" to "app.morphe:morphe-library",
 //    "ARSCLib" to "com.github.REAndroid:arsclib"
 ).forEach { (libraryPath, libraryName) ->
     val libDir = file("../$libraryPath")
