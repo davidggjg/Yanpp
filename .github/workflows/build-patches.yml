@@ -1,0 +1,56 @@
+name: Build ReVanced patch bundle
+
+# The ReVanced-lineage patch set is what gives Molt its wide app coverage
+# (~70 apps). It is built separately from the manager because it targets the
+# other patching engine, and produces a .rvp bundle - the extension is what
+# tells Molt which engine to run it with.
+
+on:
+  push:
+    paths:
+      - 'revanced-patches/**'
+      - 'revanced-patcher/**'
+      - 'revanced-patches-gradle-plugin/**'
+      - '.github/workflows/build-patches.yml'
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: build-patches-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build patch bundle
+        working-directory: revanced-patches
+        env:
+          _JAVA_OPTIONS: "-Djava.awt.headless=true"
+        run: |
+          chmod +x ./gradlew
+          ./gradlew build -PskipSigning --stacktrace
+
+      - name: Show what was produced
+        if: always()
+        run: find revanced-patches -name '*.rvp' -o -name '*.mpp' | head -20
+
+      - name: Upload patch bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: molt-revanced-patches
+          path: revanced-patches/**/build/libs/*.rvp
+          if-no-files-found: error
