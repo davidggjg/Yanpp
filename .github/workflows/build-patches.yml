@@ -1,9 +1,10 @@
-name: Build ReVanced patch bundle
+name: Build patch bundles
 
-# The ReVanced-lineage patch set is what gives Molt its wide app coverage
-# (~70 apps). It is built separately from the manager because it targets the
-# other patching engine, and produces a .rvp bundle - the extension is what
-# tells Molt which engine to run it with.
+# Molt ships two patch bundles because it carries two patching engines.
+# The file extension is the engine marker:
+#   .mpp -> Morphe-lineage engine (app.morphe.patcher)
+#   .rvp -> ReVanced-lineage engine (app.revanced.patcher), the wide app coverage
+# Both are built here so a release can publish them together.
 
 on:
   push:
@@ -11,6 +12,10 @@ on:
       - 'revanced-patches/**'
       - 'revanced-patcher/**'
       - 'revanced-patches-gradle-plugin/**'
+      - 'morphe-patches/**'
+      - 'morphe-patcher/**'
+      - 'morphe-patches-library/**'
+      - 'morphe-patches-gradle-plugin/**'
       - '.github/workflows/build-patches.yml'
   pull_request:
   workflow_dispatch:
@@ -20,8 +25,21 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+  bundle:
     runs-on: ubuntu-latest
+    strategy:
+      # Keep going so one lineage failing still tells us about the other.
+      fail-fast: false
+      matrix:
+        include:
+          - name: revanced
+            dir: revanced-patches
+            ext: rvp
+          - name: morphe
+            dir: morphe-patches
+            ext: mpp
+
+    name: ${{ matrix.name }} bundle
 
     steps:
       - name: Checkout repository
@@ -36,8 +54,8 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Build patch bundle
-        working-directory: revanced-patches
+      - name: Build ${{ matrix.name }} bundle
+        working-directory: ${{ matrix.dir }}
         env:
           _JAVA_OPTIONS: "-Djava.awt.headless=true"
         run: |
@@ -46,11 +64,11 @@ jobs:
 
       - name: Show what was produced
         if: always()
-        run: find revanced-patches -name '*.rvp' -o -name '*.mpp' | head -20
+        run: find ${{ matrix.dir }} -name '*.${{ matrix.ext }}' | head -20
 
-      - name: Upload patch bundle
+      - name: Upload ${{ matrix.name }} bundle
         uses: actions/upload-artifact@v4
         with:
-          name: molt-revanced-patches
-          path: revanced-patches/**/build/libs/*.rvp
+          name: molt-${{ matrix.name }}-patches
+          path: ${{ matrix.dir }}/**/build/libs/*.${{ matrix.ext }}
           if-no-files-found: error
