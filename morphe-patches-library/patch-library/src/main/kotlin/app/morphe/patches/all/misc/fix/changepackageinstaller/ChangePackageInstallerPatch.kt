@@ -25,10 +25,18 @@ import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
  *  Landroid/content/pm/InstallSourceInfo;->getInitiatingPackageName()Ljava/lang/String;
  * ```
  *
- * @param installerPackageName Installer package name to use. Defaults to the Google Play Store.
+ * @param installerPackageName Supplies the installer package name to use. Defaults to the
+ *   Google Play Store. This is a supplier rather than a plain value because callers pass a
+ *   patch option, whose value is only resolved once options have been set - reading it while
+ *   the patch is being constructed would always capture the default and silently discard the
+ *   user's choice.
  */
-fun changePackageInstallerPatch(installerPackageName : String = "com.android.vending") = bytecodePatch {
+fun changePackageInstallerPatch(
+    installerPackageName: () -> String = { "com.android.vending" },
+) = bytecodePatch {
     execute {
+        val packageName = installerPackageName()
+
         arrayOf(
             "Landroid/content/pm/PackageManager;->getInstallerPackageName(Ljava/lang/String;)Ljava/lang/String;",
             "Landroid/content/pm/InstallSourceInfo;->getInstallingPackageName()Ljava/lang/String;",
@@ -45,7 +53,7 @@ fun changePackageInstallerPatch(installerPackageName : String = "com.android.ven
                 val register = (instruction as OneRegisterInstruction).registerA
                 replaceInstruction(
                     returnIndex,
-                    "const-string v$register, \"$installerPackageName\""
+                    "const-string v$register, \"$packageName\""
                 )
             }
         }

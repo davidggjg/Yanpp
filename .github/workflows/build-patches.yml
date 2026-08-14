@@ -53,6 +53,15 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
+        with:
+          # These projects were on Gradle 9.3.1 before being aligned to 9.6.1, and the
+          # restored Gradle home cache kept handing back type-safe project accessors
+          # compiled against the old version, which blew up as
+          #   AbstractMethodError: RootProjectAccessor_Decorated does not define
+          #   ExtensionAware.getExtensions()
+          # Building without the shared cache keeps generated code and the running
+          # Gradle version from ever drifting apart.
+          cache-disabled: true
 
       - name: Build ${{ matrix.name }} bundle
         working-directory: ${{ matrix.dir }}
