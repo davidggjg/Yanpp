@@ -1,34 +1,24 @@
 rootProject.name = "morphe-patches"
 
 pluginManagement {
+    // The settings plugin lives in this repository rather than on a package registry.
+    // Gradle only matches a plugin to an included build when the request carries no
+    // version, so the plugins block below asks for the id alone.
+    includeBuild("../morphe-patches-gradle-plugin")
+
     repositories {
         mavenLocal()
         gradlePluginPortal()
         google()
-        maven {
-            name = "GitHubPackages"
-            url = uri("https://maven.pkg.github.com/MorpheApp/registry")
-            credentials {
-                username = providers.gradleProperty("gpr.user").getOrElse(System.getenv("GITHUB_ACTOR"))
-                password = providers.gradleProperty("gpr.key").getOrElse(System.getenv("GITHUB_TOKEN"))
-            }
-        }
+        mavenCentral()
         // Obtain baksmali/smali from source builds - https://github.com/iBotPeaches/smali
         // Remove when official smali releases come out again.
         maven { url = uri("https://jitpack.io") }
     }
-
-    // Include morphe-patches-gradle-plugin as a composite build if it exists locally,
-    // so the settings plugin below resolves from this monorepo instead of GitHub Packages.
-    file("../morphe-patches-gradle-plugin").let { pluginDir ->
-        if (pluginDir.exists()) {
-            includeBuild(pluginDir)
-        }
-    }
 }
 
 plugins {
-    id("app.morphe.patches") version "1.3.3"
+    id("app.morphe.patches")
 }
 
 settings {

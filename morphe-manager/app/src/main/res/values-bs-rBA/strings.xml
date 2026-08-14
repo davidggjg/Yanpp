@@ -36,7 +36,7 @@
     <!-- Battery optimization pre-flight dialog -->
     <!-- Patcher Screen - Patcher Worker -->
     <!-- Patcher Screen - Patcher Messages -->
-    <!-- Morphe patches fix YouTube bugs that Google still has not fixed. -->
+    <!-- Molt patches fix YouTube bugs that Google still has not fixed. -->
     <!-- "bytecode" can be translated from "the app code" -->
     <!-- Space flight communications callout. -->
     <!-- Quantum physics (box emoji is a reference to Schrodinger's cat). -->
@@ -77,7 +77,7 @@
     <!-- Settings - System Tab - APK download helper -->
     <!-- File Picker -->
     <!-- Settings - System Tab - About Section -->
-    <string name="settings_system_about">O Morphe</string>
+    <string name="settings_system_about">O Molt</string>
     <!-- Shared strings -->
     <!-- Shown while resuming a download, before the total size is known -->
     <!-- Onboarding coach marks -->

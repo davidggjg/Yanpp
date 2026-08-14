@@ -1,6 +1,11 @@
 rootProject.name = "revanced-patches"
 
 pluginManagement {
+    // The settings plugin lives in this repository rather than on a private package
+    // registry. Gradle only matches a plugin to an included build when the request
+    // carries no version, so the plugins block below asks for the id alone.
+    includeBuild("../revanced-patches-gradle-plugin")
+
     repositories {
         mavenLocal()
         gradlePluginPortal()
@@ -10,13 +15,6 @@ pluginManagement {
         maven { url = uri("https://jitpack.io") }
     }
 
-    // The settings plugin lives in this repository rather than on a private package
-    // registry, so include it as a composite build when it is present locally.
-    file("../revanced-patches-gradle-plugin").let { pluginDir ->
-        if (pluginDir.exists()) {
-            includeBuild(pluginDir)
-        }
-    }
     // TODO: Remove once https://github.com/google/protobuf-gradle-plugin/pull/797 is merged.
     resolutionStrategy {
         eachPlugin {
@@ -28,7 +26,7 @@ pluginManagement {
 }
 
 plugins {
-    id("app.revanced.patches") version "1.3.3"
+    id("app.revanced.patches")
 }
 
 settings {

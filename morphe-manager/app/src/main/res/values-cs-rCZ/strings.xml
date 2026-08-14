@@ -13,16 +13,16 @@
     <string name="android_11_bug_dialog_title">Chyba Androidu 11</string>
     <string name="android_11_bug_dialog_description">Oprávnění k instalaci aplikací musí být uděleno předem, abyste se vyhnuli chybě v systému Android 11, která negativně ovlivňuje uživatelský zážitek</string>
     <string name="deep_link_add_source_title">Přidat zdroj</string>
-    <string name="deep_link_add_source_message">Chcete přidat tento zdroj záplaty do Morphe?</string>
+    <string name="deep_link_add_source_message">Chcete přidat tento zdroj záplaty do Molt?</string>
     <string name="deep_link_add_source_warning">Přidávejte pouze zdroje, kterým důvěřujete</string>
     <!-- Home Screen - Update Notifications -->
-    <string name="home_update_available">Dostupná aktualizace Morphe</string>
+    <string name="home_update_available">Dostupná aktualizace Molt</string>
     <string name="home_update_available_subtitle">Připravena nová verze k instalaci</string>
     <string name="home_blocked_source_title">Zaznamenán blokovaný zdroj záplat</string>
     <string name="home_blocked_source_subtitle">Klepnutím zkontrolujete a odeberete</string>
     <string name="home_metadata_errors_title">Některé zdroje záplat jsou nedostupné</string>
     <string name="home_metadata_errors_subtitle">Klepnutím zkontrolujete zdroje</string>
-    <string name="home_outdated_manager_title">Morphe je zastaralý</string>
+    <string name="home_outdated_manager_title">Molt je zastaralý</string>
     <string name="home_outdated_manager_subtitle">Některé zdroje záplat vyžadují novější verzi</string>
     <string name="home_metered_skipped_title">Aktualizace pozastaveny na mobilních datech</string>
     <string name="home_metered_skipped_subtitle">Klepnutím povolíte aktualizace přes mobilní data</string>
@@ -124,8 +124,8 @@
     <string name="sources_management_metadata_unavailable">Metadata N/A</string>
     <string name="sources_management_metadata_unavailable_hint">Soubor s metadaty na vzdáleném serveru není dostupný. Záplatování pomocí nainstalovaného balíčku stále funguje, ale automatická aktualizace je pro tento zdroj zakázána</string>
     <string name="sources_management_metadata_unavailable_hint_missing">Balíček oprav nemohl být stažen. Adresa URL zdroje může být neplatná nebo soubor nemusí existovat</string>
-    <string name="sources_management_outdated_manager_badge">Aktualizovat Morphe</string>
-    <string name="sources_management_outdated_manager_hint">Tento zdroj je vytvořen pro patcher %1$s, ale Morphe %2$s obsahuje patcher %3$s. Aktualizujte Morphe pro jeho použití</string>
+    <string name="sources_management_outdated_manager_badge">Aktualizovat Molt</string>
+    <string name="sources_management_outdated_manager_hint">Tento zdroj je vytvořen pro patcher %1$s, ale Molt %2$s obsahuje patcher %3$s. Aktualizujte Molt pro jeho použití</string>
     <string name="sources_management_source_enabled">Zdroj aktivován</string>
     <string name="sources_management_source_disabled">Zdroj deaktivován</string>
     <string name="sources_management_source_updating">Aktualizace zdroje</string>
@@ -168,10 +168,10 @@
     <string name="home_apk_availability_no">Ne, už mám APK</string>
     <string name="home_apk_helper_download">Použít pomocnou aplikaci</string>
     <string name="home_apk_helper_title">Stáhnout pomocí pomocné aplikace</string>
-    <string name="home_apk_helper_description">Morphe požádá níže uvedenou pomocnou aplikaci o stažení původního APK a vrácení souboru</string>
+    <string name="home_apk_helper_description">Molt požádá níže uvedenou pomocnou aplikaci o stažení původního APK a vrácení souboru</string>
     <string name="home_apk_helper_continue">Otevřít pomocnou aplikaci</string>
-    <string name="home_apk_helper_warning">Pokračujte pouze v případě, že této pomocné aplikaci důvěřujete. Morphe před záplatováním kontroluje balíček, verzi a podpis všeho, co obdrží</string>
-    <string name="home_apk_helper_warning_unverified">Pokračujte pouze v případě, že této pomocné aplikaci důvěřujete. Morphe nemůže ověřit podpis tohoto APK, takže upravený soubor by nebyl odhalen</string>
+    <string name="home_apk_helper_warning">Pokračujte pouze v případě, že této pomocné aplikaci důvěřujete. Molt před záplatováním kontroluje balíček, verzi a podpis všeho, co obdrží</string>
+    <string name="home_apk_helper_warning_unverified">Pokračujte pouze v případě, že této pomocné aplikaci důvěřujete. Molt nemůže ověřit podpis tohoto APK, takže upravený soubor by nebyl odhalen</string>
     <string name="home_apk_helper_no_result">Pomocná aplikace nevrátila APK</string>
     <string name="home_apk_helper_no_access">Pomocná aplikace neudělila přístup k vrácenému APK</string>
     <string name="home_apk_use_saved">Použít uložený APK</string>
@@ -191,11 +191,11 @@
     <string name="home_download_instructions_download_button_toast_3">Praxe dělá mistra a ty se zlepšuješ 💪</string>
     <string name="home_download_instructions_download_button_toast_4">Stále tady nejsi… stále tady nejsi… 🙈</string>
     <string name="home_download_instructions_download_button_toast_5">OK, respektuji oddanost 🫡</string>
-    <string name="home_download_instructions_download_button_toast_6">Nyní jste oficiální tester tlačítka Morphe 🏅</string>
+    <string name="home_download_instructions_download_button_toast_6">Nyní jste oficiální tester tlačítka Molt 🏅</string>
     <string name="home_download_instructions_step3">Počkejte, než se stahování dokončí, stažené APK &lt;b&gt;NEinstalujte&lt;/b&gt;</string>
     <string name="home_download_instructions_step3_mount">Počkejte, než se stahování dokončí, stažené APK &lt;b&gt;poté nainstalujte&lt;/b&gt;</string>
-    <string name="home_download_instructions_step4">Po dokončení stažení se vraťte do Morphe</string>
-    <string name="home_download_instructions_step4_mount">Po dokončení instalace původního APK se vraťte do Morphe</string>
+    <string name="home_download_instructions_step4">Po dokončení stažení se vraťte do Molt</string>
+    <string name="home_download_instructions_step4_mount">Po dokončení instalace původního APK se vraťte do Molt</string>
     <string name="home_download_instructions_continue">Pokračujte na APKMirror.com</string>
     <!-- Home Screen - Dialog 3: File Picker Prompt -->
     <string name="home_file_picker_prompt_title">Vyberte stažený APK soubor</string>
@@ -384,7 +384,7 @@ Vnějní zóna (přerušovaná): může být ořezaná maskou spouštěčé - ud
     <string name="home_app_info_patch_update_available">Je k dispozici novější verze záplat.</string>
     <string name="home_app_info_patch_update_available_description">Je k dispozici novější verze záplaty. Repatchujte svou aplikaci, abyste získali nejnovější vylepšení a opravy.</string>
     <string name="home_app_info_app_deleted_warning">Aplikace byla odinstalována</string>
-    <string name="home_app_info_app_deleted_description">Tuto aplikaci bylo odinstalováno mimo Morphe. Zápalte ji znovu, abyste obnovili funkčnost</string>
+    <string name="home_app_info_app_deleted_description">Tuto aplikaci bylo odinstalováno mimo Molt. Zápalte ji znovu, abyste obnovili funkčnost</string>
     <string name="home_app_info_apk_size">Velikost APK</string>
     <string name="home_app_info_cpu_arch">Architektura CPU</string>
     <!-- Home Screen - Root Mode -->
@@ -393,7 +393,7 @@ Vnějní zóna (přerušovaná): může být ořezaná maskou spouštěčé - ud
     <string name="root_pre_patch_installer_description">Vaše zařízení má root přístup. Zvolte, zda má být tato aplikace záplatována pro root mount nebo standardní instalaci</string>
     <string name="root_pre_patch_installer_mount_title">Režim root mount</string>
     <string name="root_pre_patch_installer_mount_description">Patches pro root přípojný bod, poté namontuje APK nad odpovídající nativní aplikaci. Není potřeba GmsCore.</string>
-    <string name="root_mount_module_unmount_warning">Pokud má KernelSU ve výchozím nastavení povolené odmontování modulů, otevřete KernelSU > Superuser > aplikaci, kterou jste namontovali > Profil > Vlastní a zakažte odmontování modulů. Jinak se namontovaný opravený APK nemusí projevit, i když Morphe zobrazuje, že je namontovaný.</string>
+    <string name="root_mount_module_unmount_warning">Pokud má KernelSU ve výchozím nastavení povolené odmontování modulů, otevřete KernelSU > Superuser > aplikaci, kterou jste namontovali > Profil > Vlastní a zakažte odmontování modulů. Jinak se namontovaný opravený APK nemusí projevit, i když Molt zobrazuje, že je namontovaný.</string>
     <string name="root_pre_patch_installer_standard_title">Standardní režim instalace</string>
     <string name="root_pre_patch_installer_standard_description">Patche jako běžný APK se podporou GmsCore. Vaše nastavení instalátoru bude použito po opatchování</string>
     <string name="root_pre_patch_installer_hint">Tento režim patche je oddělený od Nastavení > Systém > Instalátor a nelze jej změnit po opatchování</string>
@@ -423,7 +423,7 @@ Vnějní zóna (přerušovaná): může být ořezaná maskou spouštěčé - ud
     <string name="patcher_conflict_subtitle">Musíte odinstalovat stávající verzi</string>
     <string name="patcher_conflict_hint">Opravená aplikace používá jiný certifikát než nainstalovaná verze. Odinstalování smaže všechna data aplikace.</string>
     <string name="patcher_installed_conflict_title">Odinstalace je vyžadována</string>
-    <string name="patcher_installed_conflict_body">"Morphe podepisuje opravené aplikace vlastním certifikátem, který se liší od původního. Android vyžaduje odstranění stávající verze před instalací opravené aplikace.
+    <string name="patcher_installed_conflict_body">"Molt podepisuje opravené aplikace vlastním certifikátem, který se liší od původního. Android vyžaduje odstranění stávající verze před instalací opravené aplikace.
 
 Odinstalace trvale smaže všechna data aplikace"</string>
     <string name="patcher_install_error_title">Chyba instalace</string>
@@ -433,9 +433,9 @@ Odinstalace trvale smaže všechna data aplikace"</string>
     <string name="patcher_patches_excluded_for_installer">Není k dispozici pro tuto metodu instalace a je vyloučeno: %s</string>
     <string name="patcher_storage_permission_dialog_title">Nelze přistupovat k cestě úložiště</string>
     <string name="patcher_incompatible_patcher_title">Aktualizace požadována</string>
-    <string name="patcher_incompatible_patcher_description">Balíček &lt;b&gt;%1$s&lt;/b&gt; vyžaduje verzi opravovače &lt;b&gt;%2$s&lt;/b&gt; nebo novější. Aktualizujte Morphe pro opravu této aplikace</string>
-    <string name="patcher_incompatible_patcher_update_button">Stáhnout a aktualizovat Morphe</string>
-    <string name="patcher_storage_permission_description_api30">Jedna nebo více možností záplaty odkazuje na cesty, které Morphe nemůže číst. Udělte oprávnění ke úložišti a klepněte na tlačítko, poté se záplatování spustí automaticky</string>
+    <string name="patcher_incompatible_patcher_description">Balíček &lt;b&gt;%1$s&lt;/b&gt; vyžaduje verzi opravovače &lt;b&gt;%2$s&lt;/b&gt; nebo novější. Aktualizujte Molt pro opravu této aplikace</string>
+    <string name="patcher_incompatible_patcher_update_button">Stáhnout a aktualizovat Molt</string>
+    <string name="patcher_storage_permission_description_api30">Jedna nebo více možností záplaty odkazuje na cesty, které Molt nemůže číst. Udělte oprávnění ke úložišti a klepněte na tlačítko, poté se záplatování spustí automaticky</string>
     <string name="patcher_storage_permission_description_legacy">Jeden nebo více možnosti pro patchování ukazují na cesty, které nelze přistupovat. Upravte cesty v možnostech pro patchování a zkuste to znovu</string>
     <string name="patcher_storage_permission_grant">Povolte přístup k úložišti</string>
     <string name="patcher_storage_permission_denied_warning">Oprávnění pro úložiště bylo zamítnuto. Povolte oprávnění pro použití této cesty, nebo přesuňte soubory do soukromého adresáře aplikace.</string>
@@ -454,7 +454,7 @@ Odinstalace trvale smaže všechna data aplikace"</string>
     <string name="patcher_step_sign_apk">Podpis opraveného APK souboru</string>
     <!-- Battery optimization pre-flight dialog -->
     <string name="battery_optimization_dialog_title">Ochrana záplat na pozadí</string>
-    <string name="battery_optimization_dialog_description">Na některých zařízeních se může záplata zastavit, když je aplikace minimalizována. Povolte aplikaci Morphe, aby běžela bez omezení spotřeby energie, a zajistěte tak spolehlivé dokončení záplatování.</string>
+    <string name="battery_optimization_dialog_description">Na některých zařízeních se může záplata zastavit, když je aplikace minimalizována. Povolte aplikaci Molt, aby běžela bez omezení spotřeby energie, a zajistěte tak spolehlivé dokončení záplatování.</string>
     <string name="battery_optimization_not_now">Ne teď</string>
     <!-- Patcher Screen - Patcher Worker -->
     <string name="patcher_notification_title">Záplatování probíhá…</string>
@@ -470,7 +470,7 @@ Odinstalace trvale smaže všechna data aplikace"</string>
     <string name="patcher_message_6">Podívejte se ven, je tam pěkně… 🌤️</string>
     <string name="patcher_message_7">Nastavuji 1 a 0… 🤖</string>
     <string name="patcher_message_8">Rozmotávám digitální špagety… 🍝</string>
-    <!-- Morphe patches fix YouTube bugs that Google still has not fixed. -->
+    <!-- Molt patches fix YouTube bugs that Google still has not fixed. -->
     <string name="patcher_message_9">Opravuji chyby v nezáplatované aplikaci… 🪲</string>
     <string name="patcher_message_10">Skvělé záplaty stojí za počkání… ⏳</string>
     <string name="patcher_message_11">Leštím pixely, dokud nezačnou zářit… 💎</string>
@@ -600,9 +600,9 @@ Odinstalace trvale smaže všechna data aplikace"</string>
     <string name="settings_advanced_updates">Aktualizace</string>
     <string name="settings_advanced_patcher">Záplatovač</string>
     <string name="settings_advanced_updates_use_prereleases">Předběžné verze</string>
-    <string name="settings_advanced_updates_use_prereleases_description">Časný přístup k novým verzím aplikace Morphe. Povolte předběžné verze pro každý zdroj v nastavení zdrojů záplat</string>
+    <string name="settings_advanced_updates_use_prereleases_description">Časný přístup k novým verzím aplikace Molt. Povolte předběžné verze pro každý zdroj v nastavení zdrojů záplat</string>
     <string name="settings_advanced_updates_allow_metered">Aktualizace přes mobilní data</string>
-    <string name="settings_advanced_updates_allow_metered_description">Umožňuje aplikaci Morphe a aktualizacím záplat stahovat data přes mobilní síť</string>
+    <string name="settings_advanced_updates_allow_metered_description">Umožňuje aplikaci Molt a aktualizacím záplat stahovat data přes mobilní síť</string>
     <string name="settings_advanced_updates_background_notifications">Aktualizace na pozadí</string>
     <string name="settings_advanced_updates_background_notifications_description">Periodicky ověřujte aktualizace v pozadí a upozorněte, když jsou k dispozici.</string>
     <string name="settings_advanced_updates_background_notifications_description_fcm">Push notifikace pro nové verze, i když je aplikace zavřená</string>
@@ -625,32 +625,32 @@ Odinstalace trvale smaže všechna data aplikace"</string>
     <string name="settings_advanced_external_batch_patch">Povolit externí spouštěče</string>
     <string name="settings_advanced_external_batch_patch_description">Umožňuje automatizačním aplikacím spouštět dávkové záplatování pomocí intentu. Každá žádost je potvrzena před spuštěním</string>
     <string name="external_batch_patch_title">Spustit dávkové záplatování?</string>
-    <string name="external_batch_patch_description">%s chce, aby Morphe záplatoval a nainstaloval aplikace</string>
+    <string name="external_batch_patch_description">%s chce, aby Molt záplatoval a nainstaloval aplikace</string>
     <string name="external_batch_patch_trust_caller">Vždy povolit tuto aplikaci</string>
     <string name="external_batch_patch_unknown_caller">Neznámá aplikace</string>
     <!-- Notification content -->
     <string name="notification_auto_patch_title">Automatické pře-záplatování dokončeno</string>
     <string name="notification_auto_patch_running_title">Pře-záplatování aplikací</string>
     <string name="notification_auto_patch_blocked_title">Automatické pře-záplatování neproběhlo</string>
-    <string name="notification_auto_patch_blocked_battery">Systém blokuje Morphe pro optimalizaci baterie, jinak Android zastaví spuštění ještě před jeho zahájením</string>
-    <string name="notification_auto_patch_blocked_foreground">Android neumožnil spuštění záplatování na pozadí. Otevřete Morphe a záplatujte z aplikace</string>
+    <string name="notification_auto_patch_blocked_battery">Systém blokuje Molt pro optimalizaci baterie, jinak Android zastaví spuštění ještě před jeho zahájením</string>
+    <string name="notification_auto_patch_blocked_foreground">Android neumožnil spuštění záplatování na pozadí. Otevřete Molt a záplatujte z aplikace</string>
     <string name="notification_channel_auto_patch">Automatické pře-záplatování</string>
     <string name="notification_channel_auto_patch_description">Tiché notifikace o průběhu a výsledku pro plánované pře-záplatování</string>
-    <string name="notification_manager_update_title">Dostupná aktualizace Morphe</string>
+    <string name="notification_manager_update_title">Dostupná aktualizace Molt</string>
     <string name="notification_bundle_update_title">Nové záplaty k dispozici</string>
     <string name="notification_update_text">Verze %s je připravena ke stažení</string>
-    <string name="notification_bundle_update_text_unversioned">Klepněte pro otevření Morphe a aktualizaci</string>
+    <string name="notification_bundle_update_text_unversioned">Klepněte pro otevření Molt a aktualizaci</string>
     <string name="notification_permission_dialog_title">Povolit upozornění</string>
-    <string name="notification_permission_dialog_description">Morphe potřebuje oprávnění pro oznámení, aby vás upozornila na dostupné aktualizace na pozadí</string>
+    <string name="notification_permission_dialog_description">Molt potřebuje oprávnění pro oznámení, aby vás upozornila na dostupné aktualizace na pozadí</string>
     <string name="notification_post_patch_dialog_title">Chcete být upozorněni, když budou k dispozici aktualizace?</string>
     <string name="notification_channel_fcm_updates">Aktualizace oznámení</string>
-    <string name="notification_channel_fcm_updates_description">Oznámení o nových verzích Morphe a záplatách</string>
+    <string name="notification_channel_fcm_updates_description">Oznámení o nových verzích Molt a záplatách</string>
     <string name="notification_channel_patcher">Záplatování</string>
-    <string name="notification_channel_patcher_description">Zobrazuje se během záplatování aplikace Morphe na pozadí</string>
+    <string name="notification_channel_patcher_description">Zobrazuje se během záplatování aplikace Molt na pozadí</string>
     <!-- Settings - Advanced Tab - Expert settings Section -->
     <string name="settings_advanced_expert">Expertní nastavení</string>
     <string name="settings_advanced_expert_mode">Režim expertů</string>
-    <string name="settings_advanced_expert_mode_description">Povoluje pokročilé nastavení záplatování a možnosti přizpůsobení aplikace Morphe</string>
+    <string name="settings_advanced_expert_mode_description">Povoluje pokročilé nastavení záplatování a možnosti přizpůsobení aplikace Molt</string>
     <string name="settings_advanced_expert_mode_dialog_title">Povolit Expert mód?</string>
     <string name="settings_advanced_expert_mode_dialog_message">Expert mód poskytuje více kontroly nad aplikací patchů, ale špatná konfigurace nastavení v expert módu může vést k nefunkční aplikaci</string>
     <string name="settings_advanced_strip_unused_libs">Optimalizovat pro architekturu zařízení</string>
@@ -672,7 +672,7 @@ Odinstalace trvale smaže všechna data aplikace"</string>
     <string name="settings_advanced_github_pat_dialog_description">"Nastavte GitHub Personal Access Token, abyste mohli přidávat pull requesty jako externí zdroje. Vytvořte PAT s rozsahem public_repo na
 %s"</string>
     <string name="settings_advanced_github_pat_export_include_label">Zahrnout do exportu nastavení</string>
-    <string name="settings_advanced_github_pat_export_include_supporting">Přidá toto PAT do exportovaných nastavení Morphe</string>
+    <string name="settings_advanced_github_pat_export_include_supporting">Přidá toto PAT do exportovaných nastavení Molt</string>
     <string name="settings_advanced_github_pat_export_warning">Nesdílejte svůj PAT. Pokud ho zahrnete do exportu nastavení, uchovejte tento soubor v soukromí, protože obsahuje token</string>
     <!-- Settings - Advanced Tab - Patch Options Section -->
     <string name="settings_advanced_patch_options">Nastavení záplaty</string>
@@ -770,7 +770,7 @@ Rozměry obrázků musí být následující:
     <string name="installer_status_not_supported">Nepodporováno pro tuto akci</string>
     <string name="installer_status_shizuku_not_installed">Instalujte Shizuku nebo Sui pro použití této možnosti</string>
     <string name="installer_status_shizuku_not_running">Spusťte Shizuku nebo Sui a zkuste to znovu</string>
-    <string name="installer_status_shizuku_permission">Povolte aplikaci Morphe přístup od aplikace Shizuku</string>
+    <string name="installer_status_shizuku_permission">Povolte aplikaci Molt přístup od aplikace Shizuku</string>
     <string name="installer_mount_warning_install">Vaš primary instalátor je nastaven na kořenový instalátor. Tato uložená aplikace nebyla nainstalována pomocí kořenového instalátoru</string>
     <string name="mount_version_mismatch_message">Verze původní aplikace (%2$s) se neshoduje s verzí upravené aplikace (%1$s). Kořenujte odpovídající původní verzi, pak zkuste to znovu</string>
     <string name="mount_stock_restore_failed_message">Android odmítl uložený původní APK. Nainstalujte odpovídající verzi původní aplikace a poté zkuste znovu připojit</string>
@@ -798,7 +798,7 @@ Rozměry obrázků musí být následující:
     <string name="settings_auto_uninstall_with_shizuku">Automatické odinstalování v případě konfliktu</string>
     <string name="settings_auto_uninstall_with_shizuku_description">Při automatické instalaci pomocí Shizuku nejprve odinstalujte existující aplikaci, pokud Android nahlásí konflikt podpisů. Tímto může dojít ke smazání dat aplikace.</string>
     <string name="settings_auto_uninstall_warning_title">Povolit automatické odinstalování?</string>
-    <string name="settings_auto_uninstall_warning_message">Pokud Android během automatické instalace Shizuku nahlásí konflikt podpisů, Morphe nejprve odinstaluje existující aplikaci před instalací opraveného APK</string>
+    <string name="settings_auto_uninstall_warning_message">Pokud Android během automatické instalace Shizuku nahlásí konflikt podpisů, Molt nejprve odinstaluje existující aplikaci před instalací opraveného APK</string>
     <string name="settings_auto_uninstall_warning_risk">Tímto může dojít ke smazání dat aplikace. Pokud se opravené APK nepodaří nainstalovat po odinstalování, předchozí aplikace může být již pryč.</string>
     <string name="installer_shizuku_status_action">Zkontrolovat stav Shizuku</string>
     <string name="installer_shizuku_status_title">Stav Shizuku</string>
@@ -816,7 +816,7 @@ Rozměry obrázků musí být následující:
     <string name="installer_shizuku_install_fail_with_details">"Instalace Shizuku selhala: %1$s
 
 Podrobnosti: %2$s"</string>
-    <string name="installer_shizuku_error_permission">Chybí oprávnění Shizuku. Udělte oprávnění aplikaci Morphe a zkuste to znovu</string>
+    <string name="installer_shizuku_error_permission">Chybí oprávnění Shizuku. Udělte oprávnění aplikaci Molt a zkuste to znovu</string>
     <string name="installer_shizuku_error_timeout">Shizuku nevrátil výsledek instalace. Ujistěte se, že stále běží a zkuste to znovu</string>
     <string name="installer_shizuku_error_downgrade">Android tuto operaci zablokoval, protože by to znamenalo snížení verze nainstalované aplikace.</string>
     <string name="installer_shizuku_error_signature">Android tuto operaci zablokoval, protože nainstalovaná aplikace má odlišný podpis.</string>
@@ -865,11 +865,11 @@ Podrobnosti: %2$s"</string>
     <string name="settings_system_export_keystore_failed">Nepodařilo se exportovat keystore</string>
     <string name="settings_system_show_password_field">Zobrazit heslo</string>
     <string name="settings_system_hide_password_field">Skrýt heslo</string>
-    <string name="settings_system_morphe_settings">Nastavení Morphe</string>
-    <string name="settings_system_import_manager_settings_description">Zálohuje a obnovuje nastavení aplikace Morphe</string>
-    <string name="settings_system_import_manager_settings_fail">Nepodařilo se importovat nastavení Morphe: %s</string>
-    <string name="settings_system_import_manager_settings_success">Nastavení Morphe importována</string>
-    <string name="settings_system_import_manager_settings_mode_title">Importovat nastavení Morphe</string>
+    <string name="settings_system_morphe_settings">Nastavení Molt</string>
+    <string name="settings_system_import_manager_settings_description">Zálohuje a obnovuje nastavení aplikace Molt</string>
+    <string name="settings_system_import_manager_settings_fail">Nepodařilo se importovat nastavení Molt: %s</string>
+    <string name="settings_system_import_manager_settings_success">Nastavení Molt importována</string>
+    <string name="settings_system_import_manager_settings_mode_title">Importovat nastavení Molt</string>
     <string name="settings_system_import_manager_settings_mode_description">Vyberte, jak se mají aplikovat importovaná nastavení a zdroje</string>
     <string name="settings_system_import_selections_mode_title">Importovat výběry záplat</string>
     <string name="settings_system_import_selections_mode_description">Vyberte, jak se mají aplikovat importované výběry a možnosti oprav.</string>
@@ -877,8 +877,8 @@ Podrobnosti: %2$s"</string>
     <string name="import_mode_replace_description">Přesně odpovídá záloze. Položky chybějící ze zálohy budou odebrány.</string>
     <string name="import_mode_merge_title">Sloučit s existujícími</string>
     <string name="import_mode_merge_description">Přidat chybějící položky ze zálohy. Existující položky zůstanou nezměněny.</string>
-    <string name="settings_system_export_manager_settings_fail">Nepodařilo se exportovat nastavení Morphe: %s</string>
-    <string name="settings_system_export_manager_settings_success">Nastavení Morphe exportována</string>
+    <string name="settings_system_export_manager_settings_fail">Nepodařilo se exportovat nastavení Molt: %s</string>
+    <string name="settings_system_export_manager_settings_success">Nastavení Molt exportována</string>
     <string name="settings_system_debug">Ladění</string>
     <string name="settings_system_export_debug_logs_description">Uloží systémové protokoly pro řešení potíží</string>
     <string name="settings_system_export_debug_logs_export_read_failed">Selhání čtení protokolu (kód ukončení %s)</string>
@@ -913,7 +913,7 @@ Podrobnosti: %2$s"</string>
     <string name="settings_system_storage_cleared">Uvolněno %s</string>
     <string name="settings_system_storage_nothing_to_clear">Není co mazat</string>
     <string name="settings_system_storage_open_app_info_title">Otevřít úložiště aplikace Android</string>
-    <string name="settings_system_storage_open_app_info_description">Spravujte nebo vymažte všechna data Morphe prostřednictvím nastavení systému</string>
+    <string name="settings_system_storage_open_app_info_description">Spravujte nebo vymažte všechna data Molt prostřednictvím nastavení systému</string>
     <string name="settings_system_save_original_apks_title">Zachovat původní APK</string>
     <string name="settings_system_save_original_apks_description">Uložit původní APK před záplatováním, aby bylo možné jej znovu použít pro další záplatování bez opětovného výběru souboru</string>
     <string name="settings_system_save_patched_apks_title">Zachovat záplatované APK</string>
@@ -965,7 +965,7 @@ Podrobnosti: %2$s"</string>
     <string name="copy_selection_same_source">Stejný zdroj</string>
     <!-- Settings - System Tab - Custom file picker -->
     <string name="settings_system_custom_file_picker">Vlastní výběr souborů</string>
-    <string name="settings_system_custom_file_picker_description">Procházet úložiště pomocí vestavěného výběru souborů Morphe místo výchozího systému.</string>
+    <string name="settings_system_custom_file_picker_description">Procházet úložiště pomocí vestavěného výběru souborů Molt místo výchozího systému.</string>
     <!-- Settings - System Tab - APK download helper -->
     <string name="settings_system_apk_download_helper">Pomocník pro stahování APK</string>
     <string name="settings_system_apk_download_helper_description">Nechte nainstalovanou pomocnou aplikaci stahovat původní APK za vás. Soubor pochází z této aplikace, takže to povolte pouze v případě, že jí důvěřujete</string>
@@ -986,7 +986,7 @@ Podrobnosti: %2$s"</string>
     <!-- Settings - System Tab - About Section -->
     <string name="settings_system_about">O aplikaci</string>
     <string name="settings_system_share_website">Sdílet webovou stránku</string>
-    <string name="settings_system_share_website_description">Sdílí oficiální webové stránky aplikace Morphe</string>
+    <string name="settings_system_share_website_description">Sdílí oficiální webové stránky aplikace Molt</string>
     <string name="settings_system_manager_description">Projekt s otevřeným zdrojovým kódem pro moderní, optimalizované záplaty populárních Android aplikací, řízený zpětnou vazbou a příspěvky komunity</string>
     <string name="credits">Kredity</string>
     <string name="credits_current_development">Současný vývoj</string>
@@ -1129,7 +1129,7 @@ Chcete přesto pokračovat?"</string>
     <string name="onboarding_sources_desc">Spravujte zdroje záplat. Každý zdroj poskytuje záplaty, které lze použít na vaše aplikace.</string>
     <string name="onboarding_swipe_title">Gesta posunutím prstu</string>
     <string name="onboarding_swipe_desc">Posunutím prstu doprava na kartě aplikace zobrazíte dostupné záplaty. Posunutím prstu doleva kartu skryjete z domovské obrazovky.</string>
-    <string name="onboarding_settings_desc">Přizpůsobte si Morphe: vzhled, pokročilé možnosti a systémové nástroje.</string>
+    <string name="onboarding_settings_desc">Přizpůsobte si Molt: vzhled, pokročilé možnosti a systémové nástroje.</string>
     <string name="onboarding_sources_patches_desc">Klepnutím zobrazíte všechny záplaty dostupné z tohoto zdroje.</string>
     <string name="onboarding_sources_version_desc">Klepnutím na verzi zobrazíte úplný seznam změn pro tento zdroj.</string>
     <string name="onboarding_sources_prerelease_desc">Povolte, abyste obdrželi předběžné verze záplat z tohoto zdroje.</string>
@@ -1144,8 +1144,8 @@ Chcete přesto pokračovat?"</string>
     <string name="onboarding_system_file_picker_desc">Povolte pro použití vestavěného správce souborů namísto systémového výběru při výběru APK nebo klíčů.</string>
     <!-- Tour prompt dialog shown after first successful patch install -->
     <string name="tour_prompt_title">Rychlá prohlídka funkcí</string>
-    <string name="tour_prompt_desc">Chcete si prohlédnout klíčové funkce Morphe?</string>
+    <string name="tour_prompt_desc">Chcete si prohlédnout klíčové funkce Molt?</string>
     <string name="tour_prompt_confirm">Proveďte prohlídku</string>
     <string name="onboarding_restart_title">Prohlídka funkcí</string>
-    <string name="onboarding_restart_desc">Proveďte interaktivní prohlídku klíčových funkcí Morphe.</string>
+    <string name="onboarding_restart_desc">Proveďte interaktivní prohlídku klíčových funkcí Molt.</string>
 </resources>

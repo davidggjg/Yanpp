@@ -57,11 +57,12 @@ object KnownApps {
     const val REDDIT        = "com.reddit.frontpage"
     // const val X_TWITTER     = "com.twitter.android"
 
-    // Shared Morphe brand gradient tail
-    val GRADIENT_MID = Color(0xFF1E5AA8)
-    val GRADIENT_END = Color(0xFF00AFAE)
+    // Molt brand gradient tail: the chameleon's violet running into its mint
+    // highlights, so app cards read as part of the same identity as the icon.
+    val GRADIENT_MID = Color(0xFF521AB2)
+    val GRADIENT_END = Color(0xFF30CFC4)
 
-    val DEFAULT_DOWNLOAD_COLOR = Color(0xFF0E3F6E)
+    val DEFAULT_DOWNLOAD_COLOR = Color(0xFF2B1551)
 
     // Default gradient for packages with no bundle-declared color
     val DEFAULT_COLORS = listOf(DEFAULT_DOWNLOAD_COLOR, GRADIENT_MID, GRADIENT_END)

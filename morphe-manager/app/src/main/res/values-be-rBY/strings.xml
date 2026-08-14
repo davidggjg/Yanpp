@@ -13,16 +13,16 @@
     <string name="android_11_bug_dialog_title">Памылка Android 11</string>
     <string name="android_11_bug_dialog_description">Дазвол на ўсталёўку праграмы неабходна даць загадзя, каб пазбегнуць памылкі ў сістэме Android 11, якая негатыўна паўплывае на карыстальніцкі досвед</string>
     <string name="deep_link_add_source_title">Дадаць крыніцу</string>
-    <string name="deep_link_add_source_message">Вы хочаце дадаць гэтую крыніцу патча ў Morphe?</string>
+    <string name="deep_link_add_source_message">Вы хочаце дадаць гэтую крыніцу патча ў Molt?</string>
     <string name="deep_link_add_source_warning">Дадавайце толькі надзейныя крыніцы</string>
     <!-- Home Screen - Update Notifications -->
-    <string name="home_update_available">Даступна абнаўленне Morphe</string>
+    <string name="home_update_available">Даступна абнаўленне Molt</string>
     <string name="home_update_available_subtitle">Новая версія гатовая да ўстаноўкі</string>
     <string name="home_blocked_source_title">Выяўлена заблакаваная крыніца патча</string>
     <string name="home_blocked_source_subtitle">Націсніце, каб прагледзець і выдаліць</string>
     <string name="home_metadata_errors_title">Некаторыя крыніцы патчаў недаступныя</string>
     <string name="home_metadata_errors_subtitle">Націсніце, каб прагледзець крыніцы</string>
-    <string name="home_outdated_manager_title">Morphe састарэў</string>
+    <string name="home_outdated_manager_title">Molt састарэў</string>
     <string name="home_outdated_manager_subtitle">Некаторым крыніцам патчаў патрэбна больш новая версія</string>
     <string name="home_metered_skipped_title">Абнаўленні прыпынены для мабільных даных</string>
     <string name="home_metered_skipped_subtitle">Націсніце, каб дазволіць абнаўленні па мабільных даных</string>
@@ -129,7 +129,7 @@
     <!-- Battery optimization pre-flight dialog -->
     <!-- Patcher Screen - Patcher Worker -->
     <!-- Patcher Screen - Patcher Messages -->
-    <!-- Morphe patches fix YouTube bugs that Google still has not fixed. -->
+    <!-- Molt patches fix YouTube bugs that Google still has not fixed. -->
     <!-- "bytecode" can be translated from "the app code" -->
     <!-- Space flight communications callout. -->
     <!-- Quantum physics (box emoji is a reference to Schrodinger's cat). -->

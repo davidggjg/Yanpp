@@ -72,10 +72,10 @@ import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
 
 /** Brand blue - start of the progress gradient. */
-private val PatcherProgressBlueColor = Color(0xFF1E5AA8)
+private val PatcherProgressBlueColor = Color(0xFF521AB2)
 
 /** Brand teal - used for the live indicator dot, step pipeline, progress bar end, and success state. */
-private val PatcherProgressTealColor = Color(0xFF00AFAE)
+private val PatcherProgressTealColor = Color(0xFF30CFC4)
 
 sealed interface LogItem {
     /**

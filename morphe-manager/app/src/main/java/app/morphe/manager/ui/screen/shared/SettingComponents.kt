@@ -63,7 +63,7 @@ object Defaults {
     val ItemSpacing = 12.dp
 
     // Gradient colors for GradientCircleIcon
-    val DefaultGradientColors = listOf(Color(0xFF1E5AA8), Color(0xFF00AFAE))
+    val DefaultGradientColors = listOf(Color(0xFF521AB2), Color(0xFF30CFC4))
 
     // Animation durations
     /** Duration used for dialog enter/exit and overlay transitions. */

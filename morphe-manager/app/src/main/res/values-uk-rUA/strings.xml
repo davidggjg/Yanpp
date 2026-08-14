@@ -13,16 +13,16 @@
     <string name="android_11_bug_dialog_title">Помилка Android 11</string>
     <string name="android_11_bug_dialog_description">Дозвіл на встановлення застосунку необхідно надати заздалегідь, щоб уникнути помилки в Android 11, яка негативно вплине на взаємодію з користувачем</string>
     <string name="deep_link_add_source_title">Додати джерело</string>
-    <string name="deep_link_add_source_message">Ви хочете додати це джерело патчів в Morphe?</string>
+    <string name="deep_link_add_source_message">Ви хочете додати це джерело патчів в Molt?</string>
     <string name="deep_link_add_source_warning">Додавайте лише джерела, яким ви довіряєте</string>
     <!-- Home Screen - Update Notifications -->
-    <string name="home_update_available">Доступне оновлення Morphe</string>
+    <string name="home_update_available">Доступне оновлення Molt</string>
     <string name="home_update_available_subtitle">Нова версія готова до встановлення</string>
     <string name="home_blocked_source_title">Виявлено заблоковане джерело патчів</string>
     <string name="home_blocked_source_subtitle">Натисніть, щоб переглянути та видалити</string>
     <string name="home_metadata_errors_title">Деякі джерела патчів недоступні</string>
     <string name="home_metadata_errors_subtitle">Натисніть, щоб переглянути джерела</string>
-    <string name="home_outdated_manager_title">Morphe застарів</string>
+    <string name="home_outdated_manager_title">Molt застарів</string>
     <string name="home_outdated_manager_subtitle">Деякі джерела патчів потребують новішої версії</string>
     <string name="home_metered_skipped_title">Оновлення призупинено в мобільній мережі</string>
     <string name="home_metered_skipped_subtitle">Натисніть, щоб дозволити оновлення в мобільній мережі</string>
@@ -125,8 +125,8 @@
     <string name="sources_management_metadata_unavailable">Метадані недоступні</string>
     <string name="sources_management_metadata_unavailable_hint">Віддалений файл метаданих недоступний. Патчинг з встановленим джерелом все ще працює, але автоматичне оновлення цього джерела недоступне</string>
     <string name="sources_management_metadata_unavailable_hint_missing">Не вдалося завантажити пакет патчів. Можливо, URL-адреса джерела неправильна або файл не існує</string>
-    <string name="sources_management_outdated_manager_badge">Оновити Morphe</string>
-    <string name="sources_management_outdated_manager_hint">Це джерело створено для патчера %1$s, але Morphe %2$s містить патчер %3$s. Оновіть Morphe, щоб використовувати його</string>
+    <string name="sources_management_outdated_manager_badge">Оновити Molt</string>
+    <string name="sources_management_outdated_manager_hint">Це джерело створено для патчера %1$s, але Molt %2$s містить патчер %3$s. Оновіть Molt, щоб використовувати його</string>
     <string name="sources_management_source_enabled">Джерело увімкнено</string>
     <string name="sources_management_source_disabled">Джерело вимкнено</string>
     <string name="sources_management_source_updating">Оновлення джерела</string>
@@ -169,10 +169,10 @@
     <string name="home_apk_availability_no">Ні, я вже маю APK</string>
     <string name="home_apk_helper_download">Допоміжний застосунок</string>
     <string name="home_apk_helper_title">Завантажувати за допомогою допоміжного застосунку</string>
-    <string name="home_apk_helper_description">Morphe попросить допоміжний застосунок нижче завантажити оригінальний APK та передати файл назад</string>
+    <string name="home_apk_helper_description">Molt попросить допоміжний застосунок нижче завантажити оригінальний APK та передати файл назад</string>
     <string name="home_apk_helper_continue">Відкрити допоміжний застосунок</string>
-    <string name="home_apk_helper_warning">Продовжуйте лише якщо довіряєте цьому допоміжному застосунку. Morphe перевіряє пакет, версію та підпис усього отриманого перед патчингом</string>
-    <string name="home_apk_helper_warning_unverified">Продовжуйте лише якщо довіряєте цьому допоміжному застосунку. Morphe не може перевірити підпис цього APK, тому змінений файл не буде виявлено</string>
+    <string name="home_apk_helper_warning">Продовжуйте лише якщо довіряєте цьому допоміжному застосунку. Molt перевіряє пакет, версію та підпис усього отриманого перед патчингом</string>
+    <string name="home_apk_helper_warning_unverified">Продовжуйте лише якщо довіряєте цьому допоміжному застосунку. Molt не може перевірити підпис цього APK, тому змінений файл не буде виявлено</string>
     <string name="home_apk_helper_no_result">Допоміжний застосунок не повернув APK</string>
     <string name="home_apk_helper_no_access">Допоміжний застосунок не надав доступу до APK, який він повернув</string>
     <string name="home_apk_use_saved">Збережений APK</string>
@@ -192,11 +192,11 @@
     <string name="home_download_instructions_download_button_toast_3">Практика веде до досконалості, ви на правильному шляху 💪</string>
     <string name="home_download_instructions_download_button_toast_4">Все ще не тут… все ще не тут… 🙈</string>
     <string name="home_download_instructions_download_button_toast_5">Добре, поважаю наполегливість 🫡</string>
-    <string name="home_download_instructions_download_button_toast_6">Ви тепер офіційний тестувальник кнопок Morphe 🏅</string>
+    <string name="home_download_instructions_download_button_toast_6">Ви тепер офіційний тестувальник кнопок Molt 🏅</string>
     <string name="home_download_instructions_step3">Дочекайтеся завершення завантаження та &lt;b&gt;не встановлюйте&lt;/b&gt; APK файл</string>
     <string name="home_download_instructions_step3_mount">Дочекайтеся завершення завантаження та &lt;b&gt;встановіть APK файл&lt;/b&gt;</string>
-    <string name="home_download_instructions_step4">Після завершення завантаження поверніться до Morphe</string>
-    <string name="home_download_instructions_step4_mount">Після встановлення оригінального APK, поверніться до Morphe</string>
+    <string name="home_download_instructions_step4">Після завершення завантаження поверніться до Molt</string>
+    <string name="home_download_instructions_step4_mount">Після встановлення оригінального APK, поверніться до Molt</string>
     <string name="home_download_instructions_continue">Перейти на APKMirror.com</string>
     <!-- Home Screen - Dialog 3: File Picker Prompt -->
     <string name="home_file_picker_prompt_title">Вибрати завантажений APK файл</string>
@@ -385,7 +385,7 @@
     <string name="home_app_info_patch_update_available">Доступне оновлення патчів</string>
     <string name="home_app_info_patch_update_available_description">Доступна новіша версія патчів. Перепатчіть застосунок, щоб отримати останні покращення та виправлення</string>
     <string name="home_app_info_app_deleted_warning">Застосунок було видалено</string>
-    <string name="home_app_info_app_deleted_description">Це застосунок було видалено поза менеджером Morphe. Перепатчіть його, щоб відновити функціональність</string>
+    <string name="home_app_info_app_deleted_description">Це застосунок було видалено поза менеджером Molt. Перепатчіть його, щоб відновити функціональність</string>
     <string name="home_app_info_apk_size">Розмір APK</string>
     <string name="home_app_info_cpu_arch">Архітектура процесора</string>
     <!-- Home Screen - Root Mode -->
@@ -394,7 +394,7 @@
     <string name="root_pre_patch_installer_description">Ваш пристрій має root-доступ. Оберіть, чи слід патчити цей застосунок для root монтування чи стандартного встановлення</string>
     <string name="root_pre_patch_installer_mount_title">Режим root монтування</string>
     <string name="root_pre_patch_installer_mount_description">Патчить для root монтування, потім монтує APK поверх відповідного стокового застосунку. GmsCore не потрібен</string>
-    <string name="root_mount_module_unmount_warning">Якщо в KernelSU увімкнено \"Демонтувати модулі за замовчуванням\", відкрийте KernelSU &gt; Superuser &gt; застосунок, який ви змонтували &gt; Профіль &gt; Власні та вимкніть \"Демонтувати модулі\". Інакше змонтований пропатчений APK може не набути чинності, навіть якщо Morphe показує його як змонтований</string>
+    <string name="root_mount_module_unmount_warning">Якщо в KernelSU увімкнено \"Демонтувати модулі за замовчуванням\", відкрийте KernelSU &gt; Superuser &gt; застосунок, який ви змонтували &gt; Профіль &gt; Власні та вимкніть \"Демонтувати модулі\". Інакше змонтований пропатчений APK може не набути чинності, навіть якщо Molt показує його як змонтований</string>
     <string name="root_pre_patch_installer_standard_title">Стандартний режим встановлення</string>
     <string name="root_pre_patch_installer_standard_description">Патчить як звичайний APK з підтримкою GmsCore. Ваше налаштування інсталятора використовується після патчингу</string>
     <string name="root_pre_patch_installer_hint">Цей режим патчингу окремий від Налаштування &gt; Система &gt; Інсталятор і не може бути змінений після патчингу</string>
@@ -424,7 +424,7 @@
     <string name="patcher_conflict_subtitle">Вам потрібно видалити наявну версію</string>
     <string name="patcher_conflict_hint">Патчений застосунок використовує інший підпис, ніж встановлена версія. Після видалення всі дані застосунку буде втрачено</string>
     <string name="patcher_installed_conflict_title">Потрібно видалити застосунок</string>
-    <string name="patcher_installed_conflict_body">"Morphe підписує патчені застосунки власним сертифікатом, який відрізняється від оригінального. Android вимагає видалити наявну версію перед встановленням патченого застосунку.
+    <string name="patcher_installed_conflict_body">"Molt підписує патчені застосунки власним сертифікатом, який відрізняється від оригінального. Android вимагає видалити наявну версію перед встановленням патченого застосунку.
 
 Видалення призведе до безповоротної втрати всіх даних застосунку"</string>
     <string name="patcher_install_error_title">Помилка встановлення</string>
@@ -434,9 +434,9 @@
     <string name="patcher_patches_excluded_for_installer">Недоступно для цього методу встановлення і виключено: %s</string>
     <string name="patcher_storage_permission_dialog_title">Не вдається отримати доступ до шляху зберігання</string>
     <string name="patcher_incompatible_patcher_title">Потрібне оновлення</string>
-    <string name="patcher_incompatible_patcher_description">Для джерела &lt;b&gt;%1$s&lt;/b&gt; потрібен патчер версії &lt;b&gt;%2$s&lt;/b&gt; або новіший. Будь ласка, оновіть Morphe, щоб пропатчити цей застосунок</string>
-    <string name="patcher_incompatible_patcher_update_button">Завантажити та оновити Morphe</string>
-    <string name="patcher_storage_permission_description_api30">Один або декілька параметрів патчів вказують на шляхи, які Morphe не може прочитати. Надайте доступ до сховища та натисніть кнопку, після чого патчинг розпочнеться автоматично</string>
+    <string name="patcher_incompatible_patcher_description">Для джерела &lt;b&gt;%1$s&lt;/b&gt; потрібен патчер версії &lt;b&gt;%2$s&lt;/b&gt; або новіший. Будь ласка, оновіть Molt, щоб пропатчити цей застосунок</string>
+    <string name="patcher_incompatible_patcher_update_button">Завантажити та оновити Molt</string>
+    <string name="patcher_storage_permission_description_api30">Один або декілька параметрів патчів вказують на шляхи, які Molt не може прочитати. Надайте доступ до сховища та натисніть кнопку, після чого патчинг розпочнеться автоматично</string>
     <string name="patcher_storage_permission_description_legacy">Одна або декілька опцій патчу вказують на шляхи, до яких немає доступу. Оновіть шляхи в опціях патчу та спробуйте знову</string>
     <string name="patcher_storage_permission_grant">Надати доступ до сховища</string>
     <string name="patcher_storage_permission_denied_warning">Дозвіл до сховища відхилено. Надайте дозвіл, щоб використовувати цей шлях, або перемістіть файли до приватного каталогу застосунку</string>
@@ -455,7 +455,7 @@
     <string name="patcher_step_sign_apk">Підпис патченого APK файлу</string>
     <!-- Battery optimization pre-flight dialog -->
     <string name="battery_optimization_dialog_title">Захист патчингу у фоні</string>
-    <string name="battery_optimization_dialog_description">Деякі пристрої можуть зупиняти патчер, коли застосунок згорнуто. Дозвольте Morphe працювати без обмежень батареї, щоб патчинг завершувався стабільно</string>
+    <string name="battery_optimization_dialog_description">Деякі пристрої можуть зупиняти патчер, коли застосунок згорнуто. Дозвольте Molt працювати без обмежень батареї, щоб патчинг завершувався стабільно</string>
     <string name="battery_optimization_not_now">Не зараз</string>
     <!-- Patcher Screen - Patcher Worker -->
     <string name="patcher_notification_title">Триває патчинг…</string>
@@ -471,7 +471,7 @@
     <string name="patcher_message_6">Подивіться надвір, там гарно… 🌤️</string>
     <string name="patcher_message_7">Налаштування 1 та 0… 🤖</string>
     <string name="patcher_message_8">Розплутування цифрової спагетті… 🍝</string>
-    <!-- Morphe patches fix YouTube bugs that Google still has not fixed. -->
+    <!-- Molt patches fix YouTube bugs that Google still has not fixed. -->
     <string name="patcher_message_9">Виправляємо баги в непатченому застосунку… 🪲</string>
     <string name="patcher_message_10">Великі патчі варті очікування… ⏳</string>
     <string name="patcher_message_11">Полірування пікселів до блиску… 💎</string>
@@ -602,9 +602,9 @@
     <string name="settings_advanced_updates">Оновлення</string>
     <string name="settings_advanced_patcher">Патчер</string>
     <string name="settings_advanced_updates_use_prereleases">Передрелізні оновлення</string>
-    <string name="settings_advanced_updates_use_prereleases_description">Ранній доступ до нових версій застосунку Morphe. Увімкніть попередні релізи окремо для кожного джерела в джерелах патчів</string>
+    <string name="settings_advanced_updates_use_prereleases_description">Ранній доступ до нових версій застосунку Molt. Увімкніть попередні релізи окремо для кожного джерела в джерелах патчів</string>
     <string name="settings_advanced_updates_allow_metered">Оновлення через мобільну мережу</string>
-    <string name="settings_advanced_updates_allow_metered_description">Дозволяє завантаження оновлень Morphe та патчів через мобільну мережу</string>
+    <string name="settings_advanced_updates_allow_metered_description">Дозволяє завантаження оновлень Molt та патчів через мобільну мережу</string>
     <string name="settings_advanced_updates_background_notifications">Фонові сповіщення про оновлення</string>
     <string name="settings_advanced_updates_background_notifications_description">Періодично перевіряти наявність оновлень у фоновому режимі та повідомляти про їх доступність</string>
     <string name="settings_advanced_updates_background_notifications_description_fcm">Push-сповіщення про нові релізи, навіть коли застосунок закрито</string>
@@ -627,32 +627,32 @@
     <string name="settings_advanced_external_batch_patch">Дозволити зовнішні тригери</string>
     <string name="settings_advanced_external_batch_patch_description">Дозволяє застосункам автоматизації запускати пакетний патчинг за допомогою intent. Кожен запит підтверджується перед виконанням</string>
     <string name="external_batch_patch_title">Почати пакетний патчинг?</string>
-    <string name="external_batch_patch_description">%s хоче, щоб Morphe пропатчив і встановив застосунки</string>
+    <string name="external_batch_patch_description">%s хоче, щоб Molt пропатчив і встановив застосунки</string>
     <string name="external_batch_patch_trust_caller">Завжди дозволяти цьому застосунку</string>
     <string name="external_batch_patch_unknown_caller">Невідомий застосунок</string>
     <!-- Notification content -->
     <string name="notification_auto_patch_title">Автоматичний перепатчинг завершено</string>
     <string name="notification_auto_patch_running_title">Перепатчинг застосунків</string>
     <string name="notification_auto_patch_blocked_title">Автоматичний перепатчинг не виконано</string>
-    <string name="notification_auto_patch_blocked_battery">Виключіть Morphe з оптимізації батареї, інакше Android зупинить процес до його початку</string>
-    <string name="notification_auto_patch_blocked_foreground">Android не дозволив запустити патчинг у фоновому режимі. Відкрийте Morphe і пропатчіть із застосунку</string>
+    <string name="notification_auto_patch_blocked_battery">Виключіть Molt з оптимізації батареї, інакше Android зупинить процес до його початку</string>
+    <string name="notification_auto_patch_blocked_foreground">Android не дозволив запустити патчинг у фоновому режимі. Відкрийте Molt і пропатчіть із застосунку</string>
     <string name="notification_channel_auto_patch">Автоматичний перепатчинг</string>
     <string name="notification_channel_auto_patch_description">Тихі сповіщення про прогрес і результат запланованого перепатчингу</string>
-    <string name="notification_manager_update_title">Доступне оновлення Morphe</string>
+    <string name="notification_manager_update_title">Доступне оновлення Molt</string>
     <string name="notification_bundle_update_title">Доступні нові патчі</string>
     <string name="notification_update_text">Версія %s готова до завантаження</string>
-    <string name="notification_bundle_update_text_unversioned">Натисніть, щоб відкрити Morphe та оновити</string>
+    <string name="notification_bundle_update_text_unversioned">Натисніть, щоб відкрити Molt та оновити</string>
     <string name="notification_permission_dialog_title">Дозволити сповіщення</string>
-    <string name="notification_permission_dialog_description">Morphe потребує дозволу на сповіщення, щоб повідомляти вас про доступні оновлення у фоновому режимі</string>
+    <string name="notification_permission_dialog_description">Molt потребує дозволу на сповіщення, щоб повідомляти вас про доступні оновлення у фоновому режимі</string>
     <string name="notification_post_patch_dialog_title">Бажаєте отримувати сповіщення про доступність оновлень?</string>
     <string name="notification_channel_fcm_updates">Сповіщення про оновлення</string>
-    <string name="notification_channel_fcm_updates_description">Сповіщення про нові релізи Morphe та патчів</string>
+    <string name="notification_channel_fcm_updates_description">Сповіщення про нові релізи Molt та патчів</string>
     <string name="notification_channel_patcher">Патчинг</string>
-    <string name="notification_channel_patcher_description">Показується, коли Morphe патчить застосунок у фоновому режимі</string>
+    <string name="notification_channel_patcher_description">Показується, коли Molt патчить застосунок у фоновому режимі</string>
     <!-- Settings - Advanced Tab - Expert settings Section -->
     <string name="settings_advanced_expert">Експертні налаштування</string>
     <string name="settings_advanced_expert_mode">Режим експерта</string>
-    <string name="settings_advanced_expert_mode_description">Вмикає розширені налаштування патчингу та параметри налаштування Morphe</string>
+    <string name="settings_advanced_expert_mode_description">Вмикає розширені налаштування патчингу та параметри налаштування Molt</string>
     <string name="settings_advanced_expert_mode_dialog_title">Увімкнути режим експерта?</string>
     <string name="settings_advanced_expert_mode_dialog_message">Експертний режим надає більше контролю над застосуванням патчів, але неправильне налаштування параметрів у експертному режимі може призвести до непрацездатності застосунку</string>
     <string name="settings_advanced_strip_unused_libs">Оптимізація для архітектури пристрою</string>
@@ -674,7 +674,7 @@
     <string name="settings_advanced_github_pat_dialog_description">"Встановіть GitHub Personal Access Token, щоб мати змогу додавати pull requests як зовнішні джерела. Створіть PAT з ключем public_repo на
 %s"</string>
     <string name="settings_advanced_github_pat_export_include_label">Включити в експорт налаштувань</string>
-    <string name="settings_advanced_github_pat_export_include_supporting">Додає цей PAT до експортованих налаштувань Morphe</string>
+    <string name="settings_advanced_github_pat_export_include_supporting">Додає цей PAT до експортованих налаштувань Molt</string>
     <string name="settings_advanced_github_pat_export_warning">Не поширюйте свій PAT (Personal access token). Якщо ви включаєте його в експорт налаштувань, збережіть цей файл приватним, оскільки він містить токен</string>
     <!-- Settings - Advanced Tab - Patch Options Section -->
     <string name="settings_advanced_patch_options">Параметри патчів</string>
@@ -772,7 +772,7 @@ morphe_header_custom_dark.png
     <string name="installer_status_not_supported">Не підтримується для цієї дії</string>
     <string name="installer_status_shizuku_not_installed">Встановіть Shizuku або Sui для використання цього варіанту</string>
     <string name="installer_status_shizuku_not_running">Запустіть Shizuku або Sui та спробуйте знову</string>
-    <string name="installer_status_shizuku_permission">Надайте дозвіл Morphe у застосунку Shizuku</string>
+    <string name="installer_status_shizuku_permission">Надайте дозвіл Molt у застосунку Shizuku</string>
     <string name="installer_mount_warning_install">Ваш основний інсталятор налаштований на інсталятор із рут монтуванням. Цей збережений застосунок не був встановлений за допомогою монтування</string>
     <string name="mount_version_mismatch_message">Версія стокового застосунку (%2$s) не відповідає версії патченого (%1$s). Змонтуйте відповідну стокову версію, а потім спробуйте знову</string>
     <string name="mount_stock_restore_failed_message">Android відхилив збережений оригінальний APK. Встановіть відповідну стокову версію, потім спробуйте змонтувати знову</string>
@@ -800,7 +800,7 @@ morphe_header_custom_dark.png
     <string name="settings_auto_uninstall_with_shizuku">Автоматичне видалення при конфлікті</string>
     <string name="settings_auto_uninstall_with_shizuku_description">При автоматичному встановленні через Shizuku спочатку видаляти наявний застосунок, якщо Android повідомляє про конфлікт підпису. Це може видалити дані застосунку</string>
     <string name="settings_auto_uninstall_warning_title">Увімкнути автоматичне видалення?</string>
-    <string name="settings_auto_uninstall_warning_message">Якщо Android повідомляє про конфлікт підпису під час автоматичного встановлення через Shizuku, Morphe видалить наявний застосунок перед встановленням пропатченого APK</string>
+    <string name="settings_auto_uninstall_warning_message">Якщо Android повідомляє про конфлікт підпису під час автоматичного встановлення через Shizuku, Molt видалить наявний застосунок перед встановленням пропатченого APK</string>
     <string name="settings_auto_uninstall_warning_risk">Це може видалити дані застосунку. Якщо встановлення пропатченого APK не вдасться після видалення, попередній застосунок може бути вже втрачено</string>
     <string name="installer_shizuku_status_action">Перевірити статус Shizuku</string>
     <string name="installer_shizuku_status_title">Статус Shizuku</string>
@@ -818,7 +818,7 @@ morphe_header_custom_dark.png
     <string name="installer_shizuku_install_fail_with_details">"Встановлення через Shizuku не вдалося: %1$s
 
 Деталі: %2$s"</string>
-    <string name="installer_shizuku_error_permission">Відсутній дозвіл Shizuku. Надайте дозвіл Morphe та спробуйте знову</string>
+    <string name="installer_shizuku_error_permission">Відсутній дозвіл Shizuku. Надайте дозвіл Molt та спробуйте знову</string>
     <string name="installer_shizuku_error_timeout">Shizuku не повернув результат встановлення. Переконайтеся, що він все ще запущений, і спробуйте знову</string>
     <string name="installer_shizuku_error_downgrade">Android заблокував це, оскільки це призвело б до пониження версії встановленого застосунку</string>
     <string name="installer_shizuku_error_signature">Android заблокував це, оскільки встановлений застосунок має інший підпис</string>
@@ -867,11 +867,11 @@ morphe_header_custom_dark.png
     <string name="settings_system_export_keystore_failed">Не вдалося експортувати сховище ключів</string>
     <string name="settings_system_show_password_field">Показати пароль</string>
     <string name="settings_system_hide_password_field">Приховати пароль</string>
-    <string name="settings_system_morphe_settings">Налаштування Morphe</string>
-    <string name="settings_system_import_manager_settings_description">Створює резервну копію та відновлює ваші налаштування Morphe</string>
-    <string name="settings_system_import_manager_settings_fail">Не вдалося імпортувати налаштування Morphe: %s</string>
-    <string name="settings_system_import_manager_settings_success">Налаштування Morphe імпортовано</string>
-    <string name="settings_system_import_manager_settings_mode_title">Імпорт налаштувань Morphe</string>
+    <string name="settings_system_morphe_settings">Налаштування Molt</string>
+    <string name="settings_system_import_manager_settings_description">Створює резервну копію та відновлює ваші налаштування Molt</string>
+    <string name="settings_system_import_manager_settings_fail">Не вдалося імпортувати налаштування Molt: %s</string>
+    <string name="settings_system_import_manager_settings_success">Налаштування Molt імпортовано</string>
+    <string name="settings_system_import_manager_settings_mode_title">Імпорт налаштувань Molt</string>
     <string name="settings_system_import_manager_settings_mode_description">Виберіть, як імпортовані налаштування та джерела мають бути застосовані</string>
     <string name="settings_system_import_selections_mode_title">Імпортувати вибір патчів</string>
     <string name="settings_system_import_selections_mode_description">Виберіть, як імпортований вибір та параметри патчів мають бути застосовані</string>
@@ -879,8 +879,8 @@ morphe_header_custom_dark.png
     <string name="import_mode_replace_description">Точно відповідати резервній копії. Елементи, відсутні в резервній копії, будуть видалені</string>
     <string name="import_mode_merge_title">Об\'єднати з наявними</string>
     <string name="import_mode_merge_description">Додати відсутні елементи з резервної копії. Наявні елементи залишаються без змін</string>
-    <string name="settings_system_export_manager_settings_fail">Не вдалося експортувати налаштування Morphe: %s</string>
-    <string name="settings_system_export_manager_settings_success">Налаштування Morphe експортовано</string>
+    <string name="settings_system_export_manager_settings_fail">Не вдалося експортувати налаштування Molt: %s</string>
+    <string name="settings_system_export_manager_settings_success">Налаштування Molt експортовано</string>
     <string name="settings_system_debug">Налагодження</string>
     <string name="settings_system_export_debug_logs_description">Зберігає системні журнали для усунення несправностей</string>
     <string name="settings_system_export_debug_logs_export_read_failed">Не вдалося прочитати журнали (код виходу %s)</string>
@@ -915,7 +915,7 @@ morphe_header_custom_dark.png
     <string name="settings_system_storage_cleared">Звільнено %s</string>
     <string name="settings_system_storage_nothing_to_clear">Нічого очищати</string>
     <string name="settings_system_storage_open_app_info_title">Відкрити сховище застосунку Android</string>
-    <string name="settings_system_storage_open_app_info_description">Керуйте або очищайте всі дані Morphe через системні налаштування</string>
+    <string name="settings_system_storage_open_app_info_description">Керуйте або очищайте всі дані Molt через системні налаштування</string>
     <string name="settings_system_save_original_apks_title">Зберігати оригінальні APK</string>
     <string name="settings_system_save_original_apks_description">Зберігає APK перед патчингом, щоб його можна було повторно використати для повторного патчингу без повторного вибору файлу</string>
     <string name="settings_system_save_patched_apks_title">Зберігати пропатчені APK</string>
@@ -967,7 +967,7 @@ morphe_header_custom_dark.png
     <string name="copy_selection_same_source">Те саме джерело</string>
     <!-- Settings - System Tab - Custom file picker -->
     <string name="settings_system_custom_file_picker">Власний вибір файлів</string>
-    <string name="settings_system_custom_file_picker_description">Переглядайте сховище за допомогою вбудованого у Morphe вибору файлів замість системного</string>
+    <string name="settings_system_custom_file_picker_description">Переглядайте сховище за допомогою вбудованого у Molt вибору файлів замість системного</string>
     <!-- Settings - System Tab - APK download helper -->
     <string name="settings_system_apk_download_helper">Допоміжний застосунок для завантаження APK</string>
     <string name="settings_system_apk_download_helper_description">Дозволити встановленому допоміжному застосунку завантажувати оригінальні APK для вас. Файл надходить з цього застосунку, тому вмикайте це лише якщо довіряєте йому</string>
@@ -988,7 +988,7 @@ morphe_header_custom_dark.png
     <!-- Settings - System Tab - About Section -->
     <string name="settings_system_about">Про нас</string>
     <string name="settings_system_share_website">Поділитися вебсайтом</string>
-    <string name="settings_system_share_website_description">Поділитися офіційним вебсайтом Morphe</string>
+    <string name="settings_system_share_website_description">Поділитися офіційним вебсайтом Molt</string>
     <string name="settings_system_manager_description">Проєкт із відкритим кодом для сучасного, спрощеного патчингу популярних Android-застосунків, що розвивається завдяки відгукам та внескам спільноти</string>
     <string name="credits">Подяки</string>
     <string name="credits_current_development">Поточна розробка</string>
@@ -1131,7 +1131,7 @@ morphe_header_custom_dark.png
     <string name="onboarding_sources_desc">Керуйте джерелами патчів. Кожне джерело надає патчі, які можна застосувати до ваших застосунків</string>
     <string name="onboarding_swipe_title">Жести свайпом</string>
     <string name="onboarding_swipe_desc">Проведіть праворуч по картці застосунку, щоб переглянути доступні патчі. Проведіть ліворуч, щоб приховати картку з головного екрана</string>
-    <string name="onboarding_settings_desc">Налаштуйте Morphe: зовнішній вигляд, розширені параметри та системні інструменти</string>
+    <string name="onboarding_settings_desc">Налаштуйте Molt: зовнішній вигляд, розширені параметри та системні інструменти</string>
     <string name="onboarding_sources_patches_desc">Натисніть, щоб переглянути всі патчі з цього джерела</string>
     <string name="onboarding_sources_version_desc">Натисніть на версію, щоб переглянути повний журнал змін для цього джерела</string>
     <string name="onboarding_sources_prerelease_desc">Увімкніть це, щоб отримувати попередні версії патчів із цього джерела</string>
@@ -1146,8 +1146,8 @@ morphe_header_custom_dark.png
     <string name="onboarding_system_file_picker_desc">Увімкніть, щоб використовувати вбудований файловий браузер замість системного при виборі APK або сховищ ключів</string>
     <!-- Tour prompt dialog shown after first successful patch install -->
     <string name="tour_prompt_title">Швидкий огляд функцій</string>
-    <string name="tour_prompt_desc">Хочете швидкий огляд ключових функцій Morphe?</string>
+    <string name="tour_prompt_desc">Хочете швидкий огляд ключових функцій Molt?</string>
     <string name="tour_prompt_confirm">Покажіть мені</string>
     <string name="onboarding_restart_title">Огляд функцій</string>
-    <string name="onboarding_restart_desc">Пройдіть покроковий огляд ключових функцій Morphe</string>
+    <string name="onboarding_restart_desc">Пройдіть покроковий огляд ключових функцій Molt</string>
 </resources>

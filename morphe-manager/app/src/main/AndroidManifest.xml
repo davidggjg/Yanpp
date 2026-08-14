@@ -60,7 +60,7 @@
         android:localeConfig="@xml/locales_config"
         android:largeHeap="true"
         android:supportsRtl="true"
-        android:theme="@style/Theme.MorpheManager"
+        android:theme="@style/Theme.Molt"
         android:requestLegacyExternalStorage="true"
         tools:targetApi="34"
         tools:ignore="MissingTvBanner">
@@ -79,7 +79,7 @@
             android:exported="true"
             android:launchMode="singleTask"
             android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation|keyboard|keyboardHidden"
-            android:theme="@style/Theme.MorpheManager">
+            android:theme="@style/Theme.Molt">
 
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
