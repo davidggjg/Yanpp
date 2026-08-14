@@ -18,7 +18,16 @@ const val tag = "Molt Manager"
  * Anything that upstream fetched from an API is a plain JSON file under [MOLT_DATA_BASE_URL].
  */
 const val MOLT_REPO_URL = "https://github.com/davidggjg/Yanpp"
-const val MOLT_DATA_BASE_URL = "https://raw.githubusercontent.com/davidggjg/Yanpp/refs/heads/main/data"
+
+/**
+ * Branch the app reads its data files from. This is the branch the repository actually
+ * publishes from - point it at "main" once the work lands there, otherwise every raw
+ * fetch below 404s and the app reports its patch sources as unavailable.
+ */
+const val MOLT_DATA_BRANCH = "claude/single-square-repairs-ov8wk2"
+
+const val MOLT_DATA_BASE_URL =
+    "https://raw.githubusercontent.com/davidggjg/Yanpp/$MOLT_DATA_BRANCH/data"
 
 const val SOURCE_NAME = "Molt Patches"
 const val MANAGER_REPO_URL = MOLT_REPO_URL
@@ -36,11 +45,12 @@ const val MORPHE_API_URL = MOLT_DATA_BASE_URL
 /** Static file in this repository - no server needed. */
 const val BLOCKED_SOURCES_URL = "$MOLT_DATA_BASE_URL/blocked-sources.json"
 
-/** Raw GitHub URL for the stable manager release JSON (main branch) */
-const val MANAGER_RELEASE_JSON_URL = "https://raw.githubusercontent.com/davidggjg/Yanpp/refs/heads/main/morphe-manager/app-release.json"
+/** Raw GitHub URL for the manager release JSON. */
+const val MANAGER_RELEASE_JSON_URL =
+    "https://raw.githubusercontent.com/davidggjg/Yanpp/$MOLT_DATA_BRANCH/morphe-manager/app-release.json"
 
-/** Raw GitHub URL for the pre-release manager release JSON (dev branch) */
-const val MANAGER_PRERELEASE_JSON_URL = "https://raw.githubusercontent.com/davidggjg/Yanpp/refs/heads/dev/morphe-manager/app-release.json"
+/** Raw GitHub URL for the pre-release manager release JSON. */
+const val MANAGER_PRERELEASE_JSON_URL = MANAGER_RELEASE_JSON_URL
 
 /** Controls whether manager updates are fetched directly from JSON files in the repository instead of using the GitHub API */
 const val USE_MANAGER_DIRECT_JSON = true
