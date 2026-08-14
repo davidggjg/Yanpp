@@ -40,14 +40,25 @@ abstract class SettingsPlugin @Inject constructor(
             mavenCentral()
             google()
             maven { repository -> repository.url = URI("https://jitpack.io") }
-            maven { repository ->
-                // A repository must be specified. "registry" is a dummy.
-                repository.url = URI("https://maven.pkg.github.com/revanced/registry")
-                repository.credentials {
-                    it.username = providers.gradleProperty("gpr.user")
-                        .orElse(System.getenv("GITHUB_ACTOR")).get()
-                    it.password = providers.gradleProperty("gpr.key")
-                        .orElse(System.getenv("GITHUB_TOKEN")).get()
+
+            // The private package registry is only usable when credentials are actually
+            // present. Adding it unconditionally used to blow up with a bare
+            // IllegalArgumentException, because Provider.orElse rejects a null fallback
+            // and GITHUB_TOKEN is unset outside of a workflow that passes it in.
+            // Everything this build needs resolves locally, so the registry is optional.
+            val gprUser = providers.gradleProperty("gpr.user").orNull
+                ?: System.getenv("GITHUB_ACTOR")
+            val gprKey = providers.gradleProperty("gpr.key").orNull
+                ?: System.getenv("GITHUB_TOKEN")
+
+            if (!gprUser.isNullOrBlank() && !gprKey.isNullOrBlank()) {
+                maven { repository ->
+                    // A repository must be specified. "registry" is a dummy.
+                    repository.url = URI("https://maven.pkg.github.com/revanced/registry")
+                    repository.credentials {
+                        it.username = gprUser
+                        it.password = gprKey
+                    }
                 }
             }
         }
