@@ -82,25 +82,28 @@ abstract class PatchesPlugin : Plugin<Project> {
     }
 
     /**
-     * Configures the Kotlin plugin with JVM 11 as the target because JVM 11 is the target on Android.
+     * Configures the Kotlin plugin with JVM 17 as the target, matching revanced-patcher's
+     * jvmToolchain(17). Patches inline code from the patcher, and Kotlin refuses to inline
+     * JVM 17 bytecode into a JVM 11 target - this plugin's Morphe original used JVM 11
+     * because that lineage's patcher does.
      */
     private fun Project.configureKotlin() {
         pluginManager.apply(KotlinPluginWrapper::class.java)
 
         extensions.configure<KotlinJvmProjectExtension>("kotlin") {
             it.compilerOptions {
-                jvmTarget.set(JvmTarget.JVM_11)
+                jvmTarget.set(JvmTarget.JVM_17)
             }
         }
     }
 
     /**
-     * Configures the Java plugin with Java 11 as the target because Java 11 is the target on Android.
+     * Configures the Java plugin with Java 17 as the target, to match [configureKotlin].
      * Additionally, adds sources and javadoc JARs, as patches have a public API.
      */
     private fun Project.configureJava() {
         extensions.configure<JavaPluginExtension>("java") {
-            it.targetCompatibility = JavaVersion.VERSION_11
+            it.targetCompatibility = JavaVersion.VERSION_17
 
             it.withSourcesJar()
             it.withJavadocJar()
