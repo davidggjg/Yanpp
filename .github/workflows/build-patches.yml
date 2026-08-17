@@ -24,6 +24,11 @@ concurrency:
   group: build-patches-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+  # Needed to read app.revanced:apktool-lib from GitHub Packages.
+  packages: read
+
 jobs:
   bundle:
     runs-on: ubuntu-latest
@@ -67,6 +72,11 @@ jobs:
         working-directory: ${{ matrix.dir }}
         env:
           _JAVA_OPTIONS: "-Djava.awt.headless=true"
+          # app.revanced:apktool-lib only exists on GitHub Packages, and those Maven
+          # registries need a token even to read public packages. The workflow token is
+          # enough for that, so pass it through.
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           chmod +x ./gradlew
           ./gradlew build -PskipSigning --stacktrace

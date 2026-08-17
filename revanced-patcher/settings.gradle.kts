@@ -19,21 +19,25 @@ dependencyResolutionManagement {
         mavenCentral()
         google()
 
-        // Only usable with credentials, and everything this build needs comes from
-        // the repositories above - registering it unconditionally just turns a
-        // missing artifact into a confusing authentication failure.
+        // app.revanced:apktool-lib is not on Maven Central, Google's Maven or JitPack -
+        // it only exists on GitHub Packages. GitHub Packages Maven registries require a
+        // token even for public packages, so these repositories are only registered when
+        // one is available; without it they would turn a missing artifact into a
+        // confusing authentication failure instead.
         val githubUser = providers.gradleProperty("gpr.user").orNull
             ?: System.getenv("GITHUB_ACTOR")
         val githubToken = providers.gradleProperty("gpr.key").orNull
             ?: System.getenv("GITHUB_TOKEN")
 
         if (!githubUser.isNullOrBlank() && !githubToken.isNullOrBlank()) {
-            maven {
-                name = "githubPackages"
-                url = uri("https://maven.pkg.github.com/revanced/revanced-patcher")
-                credentials {
-                    username = githubUser
-                    password = githubToken
+            listOf("revanced-patcher", "apktool").forEach { repository ->
+                maven {
+                    name = "githubPackages-$repository"
+                    url = uri("https://maven.pkg.github.com/revanced/$repository")
+                    credentials {
+                        username = githubUser
+                        password = githubToken
+                    }
                 }
             }
         }

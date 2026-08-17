@@ -74,7 +74,10 @@ abstract class PatchesPlugin : Plugin<Project> {
             )
 
             "app.revanced:revanced-patcher"("revanced-patcher")
-            "com.github.revanced.smali:smali"("smali")
+            // The ReVanced lineage uses upstream smali, which is published on Google's
+            // Maven repository. (Renaming this plugin from its Morphe original left a
+            // "com.github.revanced.smali:smali" coordinate behind, which does not exist.)
+            "com.android.tools.smali:smali"("smali")
         }
     }
 
