@@ -20,11 +20,22 @@ const val tag = "Molt Manager"
 const val MOLT_REPO_URL = "https://github.com/davidggjg/Yanpp"
 
 /**
- * Branch the app reads its data files from. This is the branch the repository actually
- * publishes from - point it at "main" once the work lands there, otherwise every raw
- * fetch below 404s and the app reports its patch sources as unavailable.
+ * Branch every first-party fetch reads from: the patch bundle manifest, the manager
+ * release manifest, changelogs and the data files below. This is the branch the
+ * repository actually publishes from - point it at "main" once the work lands there.
+ * Pointing it at a branch that does not exist makes every raw fetch 404, which is what
+ * the app reports as its patch sources being unavailable.
+ *
+ * Only first-party fetches use this. Sources the user adds themselves keep defaulting
+ * to whatever branch their own URL names.
  */
 const val MOLT_DATA_BRANCH = "claude/single-square-repairs-ov8wk2"
+
+/**
+ * Branch used when the user opts into pre-releases. There is no separate dev branch yet,
+ * so it resolves to the same place rather than to a 404.
+ */
+const val MOLT_PRERELEASE_BRANCH = MOLT_DATA_BRANCH
 
 const val MOLT_DATA_BASE_URL =
     "https://raw.githubusercontent.com/davidggjg/Yanpp/$MOLT_DATA_BRANCH/data"

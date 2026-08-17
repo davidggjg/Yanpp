@@ -91,3 +91,57 @@ jobs:
           name: molt-${{ matrix.name }}-patches
           path: ${{ matrix.dir }}/**/build/libs/*.${{ matrix.ext }}
           if-no-files-found: error
+
+  publish:
+    # Workflow artifacts expire and need a login to download, so the app cannot read
+    # them. Republish the bundles as release assets under a fixed tag with fixed file
+    # names, which is what patches-bundle.json points at - that way the URLs the app
+    # resolves stay valid for every later build.
+    needs: bundle
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download built bundles
+        uses: actions/download-artifact@v4
+        with:
+          path: bundles
+
+      - name: Collect bundles under stable names
+        id: collect
+        run: |
+          mkdir -p release
+          morphe=$(find bundles -name '*.mpp' | head -1)
+          revanced=$(find bundles -name '*.rvp' | head -1)
+          [ -n "$morphe" ] || { echo "no .mpp bundle found"; exit 1; }
+          [ -n "$revanced" ] || { echo "no .rvp bundle found"; exit 1; }
+          cp "$morphe" release/molt-patches.mpp
+          cp "$revanced" release/molt-patches.rvp
+          ls -l release
+          {
+            echo "morphe_version=$(sed -n 's/^version *= *//p' morphe-patches/gradle.properties | tr -d ' ')"
+            echo "revanced_version=$(sed -n 's/^version *= *//p' revanced-patches/gradle.properties | tr -d ' ')"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Publish to the rolling patches release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          notes="Molt patch bundles, built from ${GITHUB_SHA}.
+
+          - molt-patches.mpp - Morphe engine, version ${{ steps.collect.outputs.morphe_version }}
+          - molt-patches.rvp - ReVanced engine, version ${{ steps.collect.outputs.revanced_version }}"
+
+          if gh release view patches-latest >/dev/null 2>&1; then
+            gh release edit patches-latest --notes "$notes"
+          else
+            gh release create patches-latest --title "Molt patches" --notes "$notes"
+          fi
+
+          # --clobber so the fixed asset names keep pointing at the newest build.
+          gh release upload patches-latest release/molt-patches.mpp release/molt-patches.rvp --clobber

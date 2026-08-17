@@ -271,7 +271,10 @@ class MorpheAPI(
      * The request is cache busted because the raw CDN serves stale copies of freshly pushed files.
      */
     private suspend fun getManagerFromJson(branch: String): APIResponse<MorpheAsset> {
-        val url = cacheBusted(if (branch == "dev") MANAGER_PRERELEASE_JSON_URL else MANAGER_RELEASE_JSON_URL)
+        val url = cacheBusted(
+            if (branch == MOLT_PRERELEASE_BRANCH && branch != MOLT_DATA_BRANCH) MANAGER_PRERELEASE_JSON_URL
+            else MANAGER_RELEASE_JSON_URL
+        )
         return when (val response = client.request<ManagerReleaseInfo> {
             url(url)
             header("Cache-Control", "no-cache")
@@ -310,7 +313,7 @@ class MorpheAPI(
     suspend fun getAppUpdate(): MorpheAsset? {
         val usePrereleases = prefs.useManagerPrereleases.get()
         val currentWeight = versionWeight(BuildConfig.VERSION_NAME.removePrefix("v"))
-        val branch = if (usePrereleases) "dev" else "main"
+        val branch = if (usePrereleases) MOLT_PRERELEASE_BRANCH else MOLT_DATA_BRANCH
 
         val candidate = if (USE_MANAGER_DIRECT_JSON) {
             getManagerFromJson(branch).fallbackTo {
@@ -372,7 +375,7 @@ class MorpheAPI(
      * Uses the `dev` branch for pre-releases, `main` for stable.
      */
     private suspend fun getPatchesFromJson(usePrerelease: Boolean): APIResponse<MorpheAsset> {
-        val branch = if (usePrerelease) "dev" else "main"
+        val branch = if (usePrerelease) MOLT_PRERELEASE_BRANCH else MOLT_DATA_BRANCH
         return when (val r = rawPatchesBundleRequest<PatchesReleaseInfo>(patchesConfig, branch)) {
             is APIResponse.Success -> runCatching {
                 mapPatchesJsonToAsset(patchesConfig, r.data).also {
@@ -442,12 +445,12 @@ class MorpheAPI(
 
     /** Fetches and parses the manager's CHANGELOG.md from the appropriate branch. */
     suspend fun fetchManagerChangelog(forDevBranch: Boolean = isDevBuild): List<ChangelogEntry> {
-        val branch = if (forDevBranch) "dev" else "main"
+        val branch = if (forDevBranch) MOLT_PRERELEASE_BRANCH else MOLT_DATA_BRANCH
         return fetchChangelogFromRepo(managerConfig, branch, "CHANGELOG.md")
     }
 
     /** Fetches and parses CHANGELOG.md from the first-party patches repository. */
-    suspend fun fetchPatchesChangelog(branch: String = "main", stopAfterFirstStable: Boolean = false): List<ChangelogEntry> =
+    suspend fun fetchPatchesChangelog(branch: String = MOLT_DATA_BRANCH, stopAfterFirstStable: Boolean = false): List<ChangelogEntry> =
         fetchChangelogFromRepo(patchesConfig, branch, stopAfterFirstStable = stopAfterFirstStable)
 
     /**
